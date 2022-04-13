@@ -1,0 +1,15 @@
+# GBC
+EZ80IDE/ProfileSessions/**
+EZ80IDE/GBC.log
+**/Cache/**
+
+# Visual Studio
+.vs/**
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+
+# Output Binaries
+bin/**
+bin-int/**
