@@ -21,11 +21,14 @@ project "EZ80IDE"
 		"%{includedir.stb}",
 
 		"%{includedir.glm}",
-		"%{includedir.spdlog}"
+		"%{includedir.spdlog}",
+
+		"vendor/CEmu"
 	}
 
 	links {
-		"GBC"
+		"GBC",
+		"CEmu"
 	}
 
 	filter "system:windows"
@@ -35,7 +38,10 @@ project "EZ80IDE"
 		buildoptions "/wd5105"
 
 	filter "configurations:Debug"
-		defines "GBC_CONFIG_DEBUG"
+		defines {
+			"GBC_CONFIG_DEBUG",
+			"DEBUG_SUPPORT" -- For CEmu
+		}
 		runtime "Debug"
 		symbols "on"
 

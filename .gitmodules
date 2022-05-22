@@ -1,0 +1,3 @@
+[submodule "EZ80IDE/vendor/CEmu"]
+	path = EZ80IDE/vendor/CEmu
+	url = https://github.com/CE-Programming/CEmu.git

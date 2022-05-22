@@ -25,11 +25,13 @@ workspace "EZ80IDE"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-group "Dependencies"
+group "Dependencies/GBC"
 	include "GBC/vendor/glad"
 	include "GBC/vendor/glfw"
 	include "GBC/vendor/imgui"
 	include "GBC/vendor/stb"
+group "Dependencies/EZ80IDE"
+	include "EZ80IDE/vendor/CEmu"
 group ""
 
 include "GBC"
