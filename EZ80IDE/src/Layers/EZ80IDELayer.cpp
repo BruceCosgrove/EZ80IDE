@@ -9,7 +9,7 @@
 #include <imgui/imgui_internal.h>
 #include <fstream>
 
-namespace gbc
+namespace ide
 {
 	void EZ80IDELayer::OnAttach()
 	{
@@ -58,7 +58,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		SaveAndCloseWorkspace();
 	}
 
-	void EZ80IDELayer::OnUpdate(Timestep timestep)
+	void EZ80IDELayer::OnUpdate(gbc::Timestep timestep)
 	{
 		GBC_PROFILE_FUNCTION();
 
@@ -79,8 +79,8 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 	{
 		GBC_PROFILE_FUNCTION();
 
-		Renderer::SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		Renderer::Clear();
+		gbc::Renderer::SetClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		gbc::Renderer::Clear();
 	}
 
 	void EZ80IDELayer::OnImGuiRender()
@@ -103,17 +103,17 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		{
 #define DEBUG_DRAW_PANEL_STACK(name, stack) \
 			ImGui::Text(name); \
-			ImGuiHelper::BeginTable(name, 3, ImGuiHelper::defaultTableFlags | ImGuiTableFlags_Borders); \
+			gbc::ImGuiHelper::BeginTable(name, 3, gbc::ImGuiHelper::defaultTableFlags | ImGuiTableFlags_Borders); \
 			for (auto it = stack.crbegin(); it != stack.crend(); ++it) \
 			{ \
 				Panel* panel = *it; \
 				ImGui::Text(panel->IsEnabled() ? "Enabled" : "Disabled"); \
-				ImGuiHelper::NextTableColumn(); \
-				ImGuiHelper::Text(panel->IsFocused() ? "Focused" : "Unfocused", panel->GetTitle().c_str()); \
+				gbc::ImGuiHelper::NextTableColumn(); \
+				gbc::ImGuiHelper::Text(panel->IsFocused() ? "Focused" : "Unfocused", panel->GetTitle().c_str()); \
 				if (it != stack.crend() - 1) \
-					ImGuiHelper::NextTableColumn(); \
+					gbc::ImGuiHelper::NextTableColumn(); \
 			} \
-			ImGuiHelper::EndTable();
+			gbc::ImGuiHelper::EndTable();
 
 			DEBUG_DRAW_PANEL_STACK("File Panels", m_FilePanels);
 			ImGui::NewLine();
@@ -135,6 +135,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			DEBUG_DRAW_STATE(ExplorerFocused);
 			DEBUG_DRAW_STATE(PopupOpen);
 			DEBUG_DRAW_STATE(ModalPopup);
+			DEBUG_DRAW_STATE(ROMLoaded);
 			ImGui::Unindent();
 #undef DEBUG_DRAW_STATE
 			ImGui::End();
@@ -195,7 +196,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				ImGui::Separator();
 
 				if (ImGui::MenuItem("Exit", "Alt+F4"))
-					Application::Get().Close();
+					gbc::Application::Get().Close();
 
 				ImGui::EndMenu();
 			}
@@ -208,6 +209,25 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 						if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, panel->IsEnabled()))
 							panel->ToggleEnabled();
 					ImGui::EndMenu();
+				}
+
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Calculator"))
+			{
+				if (ImGui::MenuItem("Load ROM", nullptr, false, HasSubStates(IDEState_WorkspaceOpen, IDEState_ModalPopup | IDEState_ROMLoaded)))
+				{
+					if (LoadROM())
+						GBC_INFO("Loaded ROM Image from \"{0}\".", m_ROMFilepathString);
+					else
+						GBC_WARN("Failed to load ROM image from \"{0}\".", m_ROMFilepathString);
+				}
+
+				if (ImGui::MenuItem("Unload ROM", nullptr, false, HasSubStates(IDEState_WorkspaceOpen | IDEState_ROMLoaded, IDEState_ModalPopup)))
+				{
+					GBC_INFO("Unloading ROM Image from \"{0}\"...", m_ROMFilepathString);
+					UnloadROM();
 				}
 
 				ImGui::EndMenu();
@@ -237,25 +257,25 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
 		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
 		{
-			if (ImGuiHelper::BeginTable("NewFilePopupTable", 2, ImGuiTableFlags_None))
+			if (gbc::ImGuiHelper::BeginTable("NewFilePopupTable", 2, ImGuiTableFlags_None))
 			{
 				if (secondFrame)
 					ImGui::SetKeyboardFocusHere();
-				ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
-				ImGuiHelper::NextTableColumn();
+				gbc::ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
+				gbc::ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
-				ImGuiHelper::NextTableColumn();
+				(void)gbc::ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
+				gbc::ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::Combo("Extension", &m_NewFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
+				(void)gbc::ImGuiHelper::Combo("Extension", &m_NewFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
 
-				ImGuiHelper::EndTable();
+				gbc::ImGuiHelper::EndTable();
 			}
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
 			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
 
-			if (ImGui::Button("Create", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			if (ImGui::Button("Create", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Enter))
 			{
 				closed = true;
 				create = !!*m_NewFilenameBuffer;
@@ -263,7 +283,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			ImGui::SameLine();
 
-			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+			if (ImGui::Button("Cancel", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Escape))
 				closed = true;
 
 			ImGui::PopStyleVar();
@@ -319,22 +339,22 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
 		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
 		{
-			if (ImGuiHelper::BeginTable("NewFolderPopupTable", 2, ImGuiTableFlags_None))
+			if (gbc::ImGuiHelper::BeginTable("NewFolderPopupTable", 2, ImGuiTableFlags_None))
 			{
 				if (secondFrame)
 					ImGui::SetKeyboardFocusHere();
-				ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
-				ImGuiHelper::NextTableColumn();
+				gbc::ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
+				gbc::ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
+				(void)gbc::ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
 
-				ImGuiHelper::EndTable();
+				gbc::ImGuiHelper::EndTable();
 			}
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
 			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
 
-			if (ImGui::Button("Create", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			if (ImGui::Button("Create", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Enter))
 			{
 				closed = true;
 				create = !!*m_NewFilenameBuffer;
@@ -342,7 +362,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			ImGui::SameLine();
 
-			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+			if (ImGui::Button("Cancel", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Escape))
 				closed = true;
 
 			ImGui::PopStyleVar();
@@ -368,7 +388,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				std::filesystem::path filepath = m_WorkspaceDirectory;
 				filepath /= m_NewFileInitialDirectory;
 				filepath /= (char*)m_NewFilenameBuffer;
-				bool status = FileIO::MakeDirectoryIfNotExists(filepath);
+				bool status = gbc::FileIO::MakeDirectoryIfNotExists(filepath);
 				GBC_ASSERT(status, "Failed to create new directory.");
 			}
 
@@ -400,28 +420,28 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
 		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
 		{
-			if (ImGuiHelper::BeginTable("RenamePopupTable", 2, ImGuiTableFlags_None))
+			if (gbc::ImGuiHelper::BeginTable("RenamePopupTable", 2, ImGuiTableFlags_None))
 			{
 				if (secondFrame)
 					ImGui::SetKeyboardFocusHere();
-				ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
-				ImGuiHelper::NextTableColumn();
+				gbc::ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
+				gbc::ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
+				(void)gbc::ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
 
 				if (!m_RenamingFolder)
 				{
-					ImGuiHelper::NextTableColumn();
-					(void)ImGuiHelper::Combo("Extension", &m_NewFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
+					gbc::ImGuiHelper::NextTableColumn();
+					(void)gbc::ImGuiHelper::Combo("Extension", &m_NewFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
 				}
 
-				ImGuiHelper::EndTable();
+				gbc::ImGuiHelper::EndTable();
 			}
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
 			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
 
-			if (ImGui::Button("Rename", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			if (ImGui::Button("Rename", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Enter))
 			{
 				closed = true;
 				rename = !!*m_NewFilenameBuffer; // rename if m_NewFilenameBuffer is not empty
@@ -429,7 +449,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			ImGui::SameLine();
 
-			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+			if (ImGui::Button("Cancel", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Escape))
 				closed = true;
 
 			ImGui::PopStyleVar();
@@ -458,15 +478,15 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				if (m_RenamingFolder)
 				{
 					auto filepathOld = m_WorkspaceDirectory / m_NewFileInitialDirectory;
-					bool status = FileIO::RenameDirectory(filepathOld, filepathNew);
+					bool status = gbc::FileIO::RenameDirectory(filepathOld, filepathNew);
 					GBC_ASSERT(status, "Failed to rename directory.");
 
 					for (auto panel : m_FilePanels)
 					{
 						FilePanel* filePanel = (FilePanel*)panel;
-						if (FileIO::IsAncestorOf(filepathOld, filePanel->GetFilepath()))
+						if (gbc::FileIO::IsAncestorOf(filepathOld, filePanel->GetFilepath()))
 						{
-							auto relative = FileIO::Relative(filePanel->GetFilepath(), filepathOld);
+							auto relative = gbc::FileIO::Relative(filePanel->GetFilepath(), filepathOld);
 							RenameFilePanel(filePanel->GetFilepath(), filepathNew / relative);
 						}
 					}
@@ -480,7 +500,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 						RenameFilePanel(((FilePanel*)m_FilePanels.Peek())->GetFilepath(), filepathNew);
 					else
 					{
-						bool status = FileIO::RenameFile(m_pExplorerPanel->GetSelectedFilepath(), filepathNew);
+						bool status = gbc::FileIO::RenameFile(m_pExplorerPanel->GetSelectedFilepath(), filepathNew);
 						GBC_ASSERT(status, "Failed to rename file.");
 					}
 				}
@@ -516,7 +536,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
 			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
 
-			if (ImGui::Button("Delete", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			if (ImGui::Button("Delete", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Enter))
 			{
 				closed = true;
 				delet3 = true;
@@ -524,7 +544,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			ImGui::SameLine();
 
-			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+			if (ImGui::Button("Cancel", buttonSize) || gbc::Input::IsKeyPressed(gbc::Keycode::Escape))
 				closed = true;
 
 			ImGui::PopStyleVar();
@@ -549,9 +569,9 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		ImGui::PopStyleVar();
 	}
 
-	void EZ80IDELayer::OnEvent(Event& event)
+	void EZ80IDELayer::OnEvent(gbc::Event& event)
 	{
-		EventDispatcher dispatcher(event);
+		gbc::EventDispatcher dispatcher(event);
 		dispatcher.Dispatch(this, &EZ80IDELayer::OnWindowCloseEvent);
 		dispatcher.Dispatch(this, &EZ80IDELayer::OnKeyPressEvent);
 		if (!m_FilePanels.HasFocusedPanel())
@@ -560,29 +580,29 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			dispatcher.Dispatch(&m_FilePanels, &PanelStack::OnEvent);
 	}
 
-	void EZ80IDELayer::OnWindowCloseEvent(WindowCloseEvent& event)
+	void EZ80IDELayer::OnWindowCloseEvent(gbc::WindowCloseEvent& event)
 	{
 		if (IsState(IDEState_WorkspaceOpen))
 			CloseWorkspace();
 	}
 
-	void EZ80IDELayer::OnKeyPressEvent(KeyPressEvent& event)
+	void EZ80IDELayer::OnKeyPressEvent(gbc::KeyPressEvent& event)
 	{
-		Keycode keycode = event.GetKeycode();
-		Mods mods = event.GetMods();
+		gbc::Keycode keycode = event.GetKeycode();
+		gbc::Mods mods = event.GetMods();
 
 		if (HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen, IDEState_ModalPopup))
 		{
 			switch (keycode)
 			{
-			case Keycode::S:
-				if (mods.Are(Mods_Control))
+			case gbc::Keycode::S:
+				if (mods.Are(gbc::Mods_Control))
 					SaveFile();
-				else if (mods.Are(Mods_Control | Mods_Shift))
+				else if (mods.Are(gbc::Mods_Control | gbc::Mods_Shift))
 					SaveAll();
 				break;
-			case Keycode::W:
-				if (mods.Are(Mods_Control))
+			case gbc::Keycode::W:
+				if (mods.Are(gbc::Mods_Control))
 					CloseFile();
 				break;
 			}
@@ -592,13 +612,13 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		{
 			switch (keycode)
 			{
-			case Keycode::Delete:
-				if (mods.Are(Mods_None) && m_pExplorerPanel->IsSelectedFilepathDeleteAllowed())
+			case gbc::Keycode::Delete:
+				if (mods.Are(gbc::Mods_None) && m_pExplorerPanel->IsSelectedFilepathDeleteAllowed())
 					Delete();
-			case Keycode::C:
-				if (mods.Are(Mods_Shift))
+			case gbc::Keycode::C:
+				if (mods.Are(gbc::Mods_Shift))
 					CopyPath(m_pExplorerPanel->GetSelectedFilepath());
-				if (mods.Are(Mods_Shift | Mods_Alt))
+				if (mods.Are(gbc::Mods_Shift | gbc::Mods_Alt))
 					CopyRelativePath(m_pExplorerPanel->GetSelectedFilepath());
 				break;
 			}
@@ -608,18 +628,18 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		{
 			switch (keycode)
 			{
-			case Keycode::N:
-				if (mods.Are(Mods_Control))
+			case gbc::Keycode::N:
+				if (mods.Are(gbc::Mods_Control))
 					NewFile();
-				else if (mods.Are(Mods_Control | Mods_Shift))
+				else if (mods.Are(gbc::Mods_Control | gbc::Mods_Shift))
 					NewFolder();
 				break;
-			case Keycode::R:
-				if (mods.Are(Mods_Control))
+			case gbc::Keycode::R:
+				if (mods.Are(gbc::Mods_Control))
 					Rename();
 				break;
-			case Keycode::W:
-				if (mods.Are(Mods_Control | Mods_Shift))
+			case gbc::Keycode::W:
+				if (mods.Are(gbc::Mods_Control | gbc::Mods_Shift))
 					CloseWorkspace();
 				break;
 			}
@@ -629,8 +649,8 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		{
 			switch (keycode)
 			{
-			case Keycode::O:
-				if (mods.Are(Mods_Control))
+			case gbc::Keycode::O:
+				if (mods.Are(gbc::Mods_Control))
 					OpenWorkspace();
 				break;
 			}
@@ -655,7 +675,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			titleID = ++m_NextTitleID;
 
 		auto& titleIDString = m_TitleIDs[filepath];
-		util::IToS(titleID, titleIDString, 36);
+		gbc::util::IToS(titleID, titleIDString, 36);
 		titleIDString.insert(0, FilePanel::s_Identifier);
 		return titleIDString;
 	}
@@ -692,7 +712,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	void EZ80IDELayer::DeleteFilePanel(const std::filesystem::path& filepath)
 	{
-		if (FileIO::IsAncestorOf(m_SrcDirectory, filepath) && FileIO::FileExists(filepath))
+		if (gbc::FileIO::IsAncestorOf(m_SrcDirectory, filepath) && gbc::FileIO::FileExists(filepath))
 		{
 			auto it = m_TitleIDs.find(filepath);
 			if (it != m_TitleIDs.end())
@@ -710,23 +730,23 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				}
 			}
 
-			FileIO::Delete(filepath);
+			gbc::FileIO::Delete(filepath);
 		}
 	}
 
 	void EZ80IDELayer::DeleteFolder(const std::filesystem::path& filepath)
 	{
-		if (FileIO::IsAncestorOf(m_SrcDirectory, filepath) && FileIO::DirectoryExists(filepath))
+		if (gbc::FileIO::IsAncestorOf(m_SrcDirectory, filepath) && gbc::FileIO::DirectoryExists(filepath))
 		{
-			if (FileIO::IsEmptyDirectory(filepath))
-				FileIO::Delete(filepath);
+			if (gbc::FileIO::IsEmptyDirectory(filepath))
+				gbc::FileIO::Delete(filepath);
 			else
 			{
 				for (size_t i = 0; i < m_FilePanels.Size();)
 				{
 					FilePanel* filePanel = (FilePanel*)m_FilePanels[i];
 					auto& filePanelFilepath = filePanel->GetFilepath();
-					if (FileIO::IsAncestorOf(filepath, filePanelFilepath))
+					if (gbc::FileIO::IsAncestorOf(filepath, filePanelFilepath))
 					{
 						m_TitleIDs.erase(filePanelFilepath);
 						m_FilePanels.Remove(i);
@@ -735,7 +755,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 						i++;
 				}
 
-				FileIO::DeleteRecursive(filepath);
+				gbc::FileIO::DeleteRecursive(filepath);
 			}
 		}
 	}
@@ -827,7 +847,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			m_NewFilePendingExtension = m_NewFileSelectedExtension;
 			memset(&m_NewFilenameBuffer, 0, sizeof(m_NewFilenameBuffer));
 
-			m_NewFileInitialDirectory = FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
+			m_NewFileInitialDirectory = gbc::FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
 			m_NewFileInitialDirectoryString = m_NewFileInitialDirectory.string();
 			m_NewFileInitialDirectoryString.insert(0, 1, '.');
 			m_NewFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
@@ -847,7 +867,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			m_NewFilePendingExtension = m_NewFileSelectedExtension;
 			memset(&m_NewFilenameBuffer, 0, sizeof(m_NewFilenameBuffer));
 
-			m_NewFileInitialDirectory = FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
+			m_NewFileInitialDirectory = gbc::FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
 			m_NewFileInitialDirectoryString = m_NewFileInitialDirectory.string();
 			m_NewFileInitialDirectoryString.insert(0, 1, '.');
 			m_NewFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
@@ -859,8 +879,8 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 	{
 		GBC_INFO("Open Workspace");
 
-		auto filepath = FileDialog::OpenFolder();
-		if (!filepath.empty() && FileIO::DirectoryExists(filepath))
+		auto filepath = gbc::FileDialog::OpenFolder();
+		if (!filepath.empty() && gbc::FileIO::DirectoryExists(filepath))
 		{
 			if (HasSubStates(IDEState_WorkspaceOpen))
 				CloseWorkspace();
@@ -894,7 +914,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				filename = m_pExplorerPanel->GetSelectedFilepath().filename();
 				extension = std::filesystem::_Parse_extension(filename.native());
-				m_NewFileInitialDirectory = FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
+				m_NewFileInitialDirectory = gbc::FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
 				m_RenamingFolder = extension.empty();
 				if (m_RenamingFolder)
 					m_NewFileInitialDirectory = m_NewFileInitialDirectory.parent_path();
@@ -920,7 +940,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				FilePanel* filePanel = (FilePanel*)m_FilePanels.Peek();
 				filename = filePanel->GetFilepath().filename();
 				extension = std::filesystem::_Parse_extension(filename.native());
-				m_NewFileInitialDirectory = FileIO::Relative(filePanel->GetFilepath(), m_WorkspaceDirectory).parent_path();
+				m_NewFileInitialDirectory = gbc::FileIO::Relative(filePanel->GetFilepath(), m_WorkspaceDirectory).parent_path();
 			}
 			else // Nothing to rename.
 				return;
@@ -965,7 +985,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			m_DeletingFolder = m_pExplorerPanel->IsSelectedFilepathADirectory();
 			m_DeletingMessage = m_pExplorerPanel->GetSelectedFilepath().filename().string();
-			if (m_DeletingFolder && !FileIO::IsEmptyDirectory(m_pExplorerPanel->GetSelectedFilepath()))
+			if (m_DeletingFolder && !gbc::FileIO::IsEmptyDirectory(m_pExplorerPanel->GetSelectedFilepath()))
 				m_DeletingMessage += " and all its contents";
 		}
 	}
@@ -996,12 +1016,12 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	void EZ80IDELayer::CopyPath(const std::filesystem::path& filepath)
 	{
-		Input::SetClipboardString(filepath.string());
+		gbc::Input::SetClipboardString(filepath.string());
 	}
 
 	void EZ80IDELayer::CopyRelativePath(const std::filesystem::path& filepath)
 	{
-		Input::SetClipboardString(FileIO::Relative(filepath, m_WorkspaceDirectory).string());
+		gbc::Input::SetClipboardString(gbc::FileIO::Relative(filepath, m_WorkspaceDirectory).string());
 	}
 
 	void EZ80IDELayer::SaveAndCloseWorkspace()
@@ -1038,6 +1058,19 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			// Save all unsaved files, delete all file panels,
 			// and make all file imgui windows not persist to next workspace ini.
 			m_FilePanels.Clear();
+
+			if (HasAnySubStates(IDEState_ROMLoaded))
+			{
+				std::ofstream romFilepathFile(m_ROMFilepathFilepath);
+				if (romFilepathFile.is_open())
+				{
+					romFilepathFile.write(m_ROMFilepathString.c_str(), m_ROMFilepathString.length());
+					romFilepathFile.put('\n');
+					romFilepathFile.close();
+				}
+			}
+			else if (gbc::FileIO::FileExists(m_ROMFilepath)) // TODO: *should* cache filepath separately.
+				gbc::FileIO::Delete(m_ROMFilepath);
 		}
 	}
 
@@ -1054,32 +1087,55 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			m_ImguiIniFilepathString.clear();
 			m_SrcDirectory.clear();
 			m_BinDirectory.clear();
+			m_CalcDirectory.clear();
 			m_TitleIDsFilepath.clear();
+			m_ROMFilepath.clear();
+			m_ROMFilepathString.clear();
 		}
 		else
 		{
 			AddStates(IDEState_WorkspaceOpen);
 
 			// Update workspace to new directory.
-			m_WorkspaceDirectory = FileIO::Absolute(workspaceDirectory);
+			m_WorkspaceDirectory = gbc::FileIO::Absolute(workspaceDirectory);
 
 			m_SrcDirectory = workspaceDirectory / L"src";
-			FileIO::MakeDirectoryIfNotExists(m_SrcDirectory);
+			gbc::FileIO::MakeDirectoryIfNotExists(m_SrcDirectory);
 			m_BinDirectory = workspaceDirectory / L"bin";
-			FileIO::MakeDirectoryIfNotExists(m_BinDirectory);
+			gbc::FileIO::MakeDirectoryIfNotExists(m_BinDirectory);
+			m_CalcDirectory = workspaceDirectory / L"calc";
+			gbc::FileIO::MakeDirectoryIfNotExists(m_CalcDirectory);
 
 			m_MetaDataDirectory = workspaceDirectory / L".ez80ide";
-			FileIO::MakeHiddenDirectory(m_MetaDataDirectory);
+			gbc::FileIO::MakeHiddenDirectory(m_MetaDataDirectory);
+
+			m_ROMFilepathFilepath = m_MetaDataDirectory / "rom_filepath.ini";
+			if (gbc::FileIO::FileExists(m_ROMFilepathFilepath))
+			{
+				std::string romFilepathFilepathFile = gbc::FileIO::ReadFile(m_ROMFilepathFilepath);
+				m_ROMFilepath = ((std::string_view)romFilepathFilepathFile).substr(0, romFilepathFilepathFile.find('\n'));
+
+				if (gbc::FileIO::FileExists(m_ROMFilepath))
+					m_ROMFilepathString = m_ROMFilepath.string();
+				else
+				{
+					m_ROMFilepath.clear();
+					m_ROMFilepathString.clear();
+
+					bool status = gbc::FileIO::Delete(m_ROMFilepathFilepath);
+					GBC_ASSERT(status, "Failed to delete rom filepath ini file.");
+				}
+			}
 
 			std::filesystem::path imguiIniFilepath = m_MetaDataDirectory / L"imgui.ini";
 			m_ImguiIniFilepathString = imguiIniFilepath.string();
-			if (FileIO::FileExists(imguiIniFilepath))
+			if (gbc::FileIO::FileExists(imguiIniFilepath))
 				ImGui::LoadIniSettingsFromDisk(m_ImguiIniFilepathString.c_str());
 
 			m_TitleIDsFilepath = m_MetaDataDirectory / L"title_ids.ini";
-			if (FileIO::FileExists(m_TitleIDsFilepath))
+			if (gbc::FileIO::FileExists(m_TitleIDsFilepath))
 			{
-				std::string titleIDFile = FileIO::ReadFile(m_TitleIDsFilepath);
+				std::string titleIDFile = gbc::FileIO::ReadFile(m_TitleIDsFilepath);
 
 				size_t filepathStart = 0;
 				do
@@ -1096,7 +1152,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 					filepathStart = idEnd + 1;
 
 					uint64_t titleID;
-					if (!util::SToI(titleIDString, titleID, 36))
+					if (!gbc::util::SToI(titleIDString, titleID, 36))
 						titleID = 0;
 					FilePanel* filePanel = AddFilePanel(titleIDFilepath, titleID);
 
@@ -1109,5 +1165,31 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		}
 
 		m_pExplorerPanel->SetWorkspaceDirectory(m_WorkspaceDirectory);
+	}
+
+	bool EZ80IDELayer::LoadROM()
+	{
+		auto filepath = gbc::FileDialog::OpenFile(gbc::GetFilter(gbc::FileType::rom));
+		if (filepath.empty())
+			return false;
+
+		auto filepathString = filepath.string();
+		if (!m_EmulatorThread.Load(filepathString.c_str()))
+			return false;
+
+		m_ROMFilepath = std::move(filepath);
+		m_ROMFilepathString = std::move(filepathString);
+		m_EmulatorThread.Start();
+		AddStates(IDEState_ROMLoaded);
+		return true;
+	}
+
+	void EZ80IDELayer::UnloadROM()
+	{
+		m_EmulatorThread.Unload();
+		RemoveStates(IDEState_ROMLoaded);
+
+		m_ROMFilepath.clear();
+		m_ROMFilepathString.clear();
 	}
 }

@@ -4,7 +4,7 @@
 #if GBC_ENABLE_STATS
 #include "Panels/Panel.h"
 
-namespace gbc
+namespace ide
 {
 	class RendererInfoPanel : public Panel
 	{

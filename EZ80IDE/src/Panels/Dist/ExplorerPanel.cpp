@@ -4,7 +4,7 @@
 #include "GBC/ImGui/ImGuiHelper.h"
 #include "GBC/IO/FileIO.h"
 
-namespace gbc
+namespace ide
 {
 	ExplorerPanel::ExplorerPanel(EZ80IDELayer* ez80IDELayer, const std::string& title)
 		: Panel(ez80IDELayer, title) {}
@@ -44,9 +44,9 @@ namespace gbc
 						if (ImGui::MenuItem("New Folder", "Ctrl+Shift+N"))
 							ide.NewFolder();
 						if (ImGui::MenuItem("Open in Terminal"))
-							FileDialog::OpenFolderInTerminal(m_SelectedFilepath);
+							gbc::FileDialog::OpenFolderInTerminal(m_SelectedFilepath);
 						if (ImGui::MenuItem("Open in File Explorer"))
-							FileDialog::OpenFolderInExplorer(m_SelectedFilepath);
+							gbc::FileDialog::OpenFolderInExplorer(m_SelectedFilepath);
 
 						ImGui::Separator();
 
@@ -65,7 +65,7 @@ namespace gbc
 						if (ImGui::MenuItem("Open in Editor"))
 							ide.FocusOrAddFilePanel(m_SelectedFilepath);
 						if (ImGui::MenuItem("Open in File Explorer"))
-							FileDialog::OpenFileInExplorer(m_SelectedFilepath);
+							gbc::FileDialog::OpenFileInExplorer(m_SelectedFilepath);
 
 						ImGui::Separator();
 
@@ -102,7 +102,7 @@ namespace gbc
 
 		ImGuiTreeNodeFlags directoryFlags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow |
 			ImGuiTreeNodeFlags_OpenOnDoubleClick;
-		if (!FileIO::IsAncestorOf(ide.GetSrcDirectory(), directory.filepath))
+		if (!gbc::FileIO::IsAncestorOf(ide.GetSrcDirectory(), directory.filepath))
 			directoryFlags |= ImGuiTreeNodeFlags_DefaultOpen;
 		if (directory.subDirectories.empty() && directory.files.empty())
 			directoryFlags |= ImGuiTreeNodeFlags_Leaf;
@@ -115,7 +115,7 @@ namespace gbc
 		{
 			m_SelectedFilepath = directory.filepath;
 			m_SelectedFilepathIsDirectory = true;
-			m_SelectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
+			m_SelectedFilepathDeleteAllowed = gbc::FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
 			clickedFile = true;
 		}
 
@@ -123,7 +123,7 @@ namespace gbc
 		{
 			m_SelectedFilepath = directory.filepath;
 			m_SelectedFilepathIsDirectory = true;
-			m_SelectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
+			m_SelectedFilepathDeleteAllowed = gbc::FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
 			clickedFile = true;
 
 			m_OptionsPopupOpen = true;
@@ -146,7 +146,7 @@ namespace gbc
 				{
 					m_SelectedFilepath = file.filepath;
 					m_SelectedFilepathIsDirectory = false;
-					m_SelectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
+					m_SelectedFilepathDeleteAllowed = gbc::FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
 					clickedFile = true;
 
 					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -157,7 +157,7 @@ namespace gbc
 				{
 					m_SelectedFilepath = file.filepath;
 					m_SelectedFilepathIsDirectory = false;
-					m_SelectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
+					m_SelectedFilepathDeleteAllowed = gbc::FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath);
 					clickedFile = true;
 
 					m_OptionsPopupOpen = true;
@@ -188,10 +188,10 @@ namespace gbc
 			m_WorkspaceDirectory.filename = workspaceDirectoryFilepath.filename().string();
 			RefreshDirectories();
 
-			m_Notifier = DirectoryChange::Notifier(
+			m_Notifier = gbc::DirectoryChange::Notifier(
 				GBC_BIND_FUNC(OnDirectoryNotification),
 				m_WorkspaceDirectory.filepath,
-				DirectoryChange::NotificationType_NameChanged,
+				gbc::DirectoryChange::NotificationType_NameChanged,
 				true
 			);
 		}
@@ -201,7 +201,7 @@ namespace gbc
 	{
 		auto& ide = GetIDE();
 
-		if (!FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath))
+		if (!gbc::FileIO::IsAncestorOf(ide.GetSrcDirectory(), m_SelectedFilepath))
 			return ide.GetSrcDirectory();
 		return m_SelectedFilepathIsDirectory ? m_SelectedFilepath : m_SelectedFilepath.parent_path();
 	}
@@ -216,14 +216,14 @@ namespace gbc
 
 		if (!m_SelectedFilepath.empty())
 		{
-			while (!FileIO::DirectoryExists(m_SelectedFilepath) && FileIO::IsAncestorOf(m_WorkspaceDirectory.filepath, m_SelectedFilepath))
+			while (!gbc::FileIO::DirectoryExists(m_SelectedFilepath) && gbc::FileIO::IsAncestorOf(m_WorkspaceDirectory.filepath, m_SelectedFilepath))
 				m_SelectedFilepath = m_SelectedFilepath.parent_path();
-			if (!FileIO::IsAncestorOf(m_WorkspaceDirectory.filepath, m_SelectedFilepath))
+			if (!gbc::FileIO::IsAncestorOf(m_WorkspaceDirectory.filepath, m_SelectedFilepath))
 				m_SelectedFilepath = m_WorkspaceDirectory.filepath;
 		}
 		if (m_OptionsPopupOpen)
 		{
-			if (!FileIO::DirectoryExists(m_SelectedFilepath))
+			if (!gbc::FileIO::DirectoryExists(m_SelectedFilepath))
 			{
 				m_SelectedFilepath.clear();
 				ide.ClosePopup(s_pOptionsPopupTitle);
@@ -237,7 +237,7 @@ namespace gbc
 		std::error_code error;
 		for (const auto& entry : std::filesystem::directory_iterator(directory.filepath, error))
 		{
-			if (!FileIO::IsHidden(entry.path()))
+			if (!gbc::FileIO::IsHidden(entry.path()))
 			{
 				if (entry.is_directory(error))
 					RefreshDirectory(directory.subDirectories.emplace_back(entry.path()));

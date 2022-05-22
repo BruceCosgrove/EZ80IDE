@@ -10,7 +10,7 @@ namespace gbc
 		specs.title = "TI-84+CE EZ80 IDE";
 
 		auto application = new Application(args, specs);
-		application->PushLayer(new EZ80IDELayer());
+		application->PushLayer(new ide::EZ80IDELayer());
 
 		return application;
 	}

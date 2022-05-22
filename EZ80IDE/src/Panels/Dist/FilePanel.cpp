@@ -4,12 +4,12 @@
 #include <imgui/imgui_internal.h>
 #include <unordered_map>
 
-namespace gbc
+namespace ide
 {
 	FilePanel::FilePanel(EZ80IDELayer* ez80IDELayer, const std::filesystem::path& filepath, uint64_t id)
 		: Panel(ez80IDELayer, ez80IDELayer->GetFilePanelTitle(filepath, id), false), m_Filepath(filepath)
 	{
-		bool status = FileIO::MakeFileIfNotExists(filepath);
+		bool status = gbc::FileIO::MakeFileIfNotExists(filepath);
 		GBC_ASSERT(status, "Failed to create file panel file!");
 		UpdateWindowTitle();
 		SetEnabled(true);
@@ -41,10 +41,10 @@ namespace gbc
 
 	void FilePanel::Rename(const std::filesystem::path& filepath) noexcept
 	{
-		if (FileIO::FileExists(this->m_Filepath))
+		if (gbc::FileIO::FileExists(this->m_Filepath))
 		{
 			Save();
-			FileIO::RenameFile(this->m_Filepath, filepath);
+			gbc::FileIO::RenameFile(this->m_Filepath, filepath);
 			this->m_Filepath = filepath;
 		}
 		else

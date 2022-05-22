@@ -4,7 +4,7 @@
 #if GBC_CONFIG_DEBUG
 #include "Panels/Panel.h"
 
-namespace gbc
+namespace ide
 {
 	class DemoPanel : public Panel
 	{

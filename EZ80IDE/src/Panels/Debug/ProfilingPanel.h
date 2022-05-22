@@ -4,7 +4,7 @@
 #if GBC_ENABLE_PROFILE_RUNTIME
 #include "Panels/Panel.h"
 
-namespace gbc
+namespace ide
 {
 	class ProfilingPanel : public Panel
 	{

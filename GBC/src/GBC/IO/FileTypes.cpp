@@ -16,6 +16,8 @@ namespace gbc
 	{
 		// Filters
 		CreateFilter(L"EZ80", FileType::ez80);
+		CreateFilter(L"ROM", FileType::rom);
+		CreateFilter(L"RAM", FileType::ram);
 	}
 
 	FilterGenerator::~FilterGenerator()

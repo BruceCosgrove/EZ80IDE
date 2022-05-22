@@ -2,6 +2,7 @@ project "EZ80IDE"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++latest"
+	cdialect "C17" -- For CEmuGui.cpp.
 	staticruntime "off"
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
@@ -10,7 +11,12 @@ project "EZ80IDE"
 	files {
 		"src/**.h",
 		"src/**.inl",
-		"src/**.cpp"
+		"src/**.cpp",
+		"src/**.c" -- For CEmuGui.cpp.
+	}
+
+	defines {
+		"MULTITHREAD" -- For CEmu.
 	}
 
 	includedirs {
@@ -40,7 +46,7 @@ project "EZ80IDE"
 	filter "configurations:Debug"
 		defines {
 			"GBC_CONFIG_DEBUG",
-			"DEBUG_SUPPORT" -- For CEmu
+			"DEBUG_SUPPORT" -- For CEmu.
 		}
 		runtime "Debug"
 		symbols "on"

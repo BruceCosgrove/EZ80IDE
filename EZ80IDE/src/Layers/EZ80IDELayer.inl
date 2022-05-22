@@ -1,4 +1,4 @@
-namespace gbc
+namespace ide
 {
 	template<typename T>
 	T* EZ80IDELayer::AddPanel(const std::string& name)

@@ -13,7 +13,10 @@ namespace gbc
 
 	namespace FileType
 	{
+		// TODO: Add the ability to have custom file types so GBC itself doesn't have to be modified every time.
 		static constexpr auto ez80 = WideCharsToWideStringViews({ L".ez80", L".asm", L".inc" });
+		static constexpr std::wstring_view rom = L".rom";
+		static constexpr std::wstring_view ram = L".ram";
 	}
 
 	const wchar_t* GetFilter(std::wstring_view extension) noexcept;

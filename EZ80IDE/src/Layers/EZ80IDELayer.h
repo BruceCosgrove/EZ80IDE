@@ -2,8 +2,9 @@
 
 #include <gbc.h>
 #include "Panels/PanelStack.h"
+#include "Emulation/EmulatorThread.h"
 
-namespace gbc
+namespace ide
 {
 	using IDEState = uint32_t;
 	enum : IDEState
@@ -15,6 +16,7 @@ namespace gbc
 		IDEState_ExplorerFocused    = 1 << 3,
 		IDEState_PopupOpen          = 1 << 4,
 		IDEState_ModalPopup         = 1 << 5,
+		IDEState_ROMLoaded          = 1 << 6,
 
 		// Automatically creates the ide state mask
 		_IDEState_Last, IDEState_Mask = (_IDEState_Last << 1) - 3
@@ -24,19 +26,19 @@ namespace gbc
 	class FilePanel;
 	class ExplorerPanel;
 
-	class EZ80IDELayer : public Layer
+	class EZ80IDELayer : public gbc::Layer
 	{
 	public:
 		virtual void OnAttach() override;
 		virtual void OnDetach() override;
-		virtual void OnUpdate(Timestep timestep) override;
+		virtual void OnUpdate(gbc::Timestep timestep) override;
 		virtual void OnRender() override;
 		virtual void OnImGuiRender() override;
 		virtual void OnPostImGuiRender() override;
-		virtual void OnEvent(Event& event) override;
+		virtual void OnEvent(gbc::Event& event) override;
 	private:
-		void OnWindowCloseEvent(WindowCloseEvent& event);
-		void OnKeyPressEvent(KeyPressEvent& event);
+		void OnWindowCloseEvent(gbc::WindowCloseEvent& event);
+		void OnKeyPressEvent(gbc::KeyPressEvent& event);
 	public: // State methods.
 		// Checks if the current state is exactly the given state.
 		constexpr bool IsState(IDEState state) const noexcept { return m_State == state; }
@@ -90,6 +92,9 @@ namespace gbc
 
 		// Closes the active workspace, if present.
 		void CloseWorkspace();
+	public: // Menubar/Calculator
+		bool LoadROM();
+		void UnloadROM();
 	public:
 		// Sets the user's clipboard to a utf-8 encoded string converted from the given filepath.
 		void CopyPath(const std::filesystem::path& filepath);
@@ -107,13 +112,18 @@ namespace gbc
 		inline const std::filesystem::path& GetMetaDataDirectory() const noexcept { return m_MetaDataDirectory; }
 		inline const std::filesystem::path& GetSrcDirectory() const noexcept { return m_SrcDirectory; }
 		inline const std::filesystem::path& GetBinDirectory() const noexcept { return m_BinDirectory; }
+		inline const std::filesystem::path& GetCalcDirectory() const noexcept { return m_CalcDirectory; }
 	private: // Filepath caches.
 		std::filesystem::path m_WorkspaceDirectory;
 		std::filesystem::path m_MetaDataDirectory;
 		std::filesystem::path m_SrcDirectory;
 		std::filesystem::path m_BinDirectory;
+		std::filesystem::path m_CalcDirectory;
 
 		std::filesystem::path m_TitleIDsFilepath;
+		std::filesystem::path m_ROMFilepathFilepath;
+		std::filesystem::path m_ROMFilepath;
+		std::string m_ROMFilepathString;
 		std::string m_ImguiIniFilepathString;
 	public: // Popup methods.
 		// Returns true as long as the popup is open.
@@ -182,6 +192,8 @@ namespace gbc
 
 		FilePanel* AddFilePanel(const std::filesystem::path& filepath, uint64_t id = 0);
 		PanelStack m_FilePanels;
+	private:
+		emu::EmulatorThread m_EmulatorThread;
 	};
 }
 

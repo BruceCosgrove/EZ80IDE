@@ -1,13 +1,13 @@
 #include "PanelStack.h"
 
-namespace gbc
+namespace ide
 {
 	PanelStack::~PanelStack() noexcept
 	{
 		Clear();
 	}
 
-	void PanelStack::OnEvent(Event& event)
+	void PanelStack::OnEvent(gbc::Event& event)
 	{
 		if (!Empty())
 		{

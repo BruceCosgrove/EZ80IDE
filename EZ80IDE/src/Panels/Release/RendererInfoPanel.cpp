@@ -3,12 +3,12 @@
 #include "GBC/Core/Application.h"
 #include "GBC/ImGui/ImGuiHelper.h"
 
-namespace gbc
+namespace ide
 {
 	RendererInfoPanel::RendererInfoPanel(EZ80IDELayer* ez80IDELayer, const std::string& title)
 		: Panel(ez80IDELayer, title)
 	{
-		const auto& context = Application::Get().GetWindow().GetContext();
+		const auto& context = gbc::Application::Get().GetWindow().GetContext();
 		m_pVendor = context.GetVendor();
 		m_pRenderer = context.GetRenderer();
 		m_pVersion = context.GetVersion();
@@ -16,14 +16,14 @@ namespace gbc
 
 	void RendererInfoPanel::OnImGuiRender(int)
 	{
-		if (ImGuiHelper::BeginTable("RendererInfo"))
+		if (gbc::ImGuiHelper::BeginTable("RendererInfo"))
 		{
-			ImGuiHelper::Text("Vendor", m_pVendor);
-			ImGuiHelper::NextTableColumn();
-			ImGuiHelper::Text("Renderer", m_pRenderer);
-			ImGuiHelper::NextTableColumn();
-			ImGuiHelper::Text("Version", m_pVersion);
-			ImGuiHelper::EndTable();
+			gbc::ImGuiHelper::Text("Vendor", m_pVendor);
+			gbc::ImGuiHelper::NextTableColumn();
+			gbc::ImGuiHelper::Text("Renderer", m_pRenderer);
+			gbc::ImGuiHelper::NextTableColumn();
+			gbc::ImGuiHelper::Text("Version", m_pVersion);
+			gbc::ImGuiHelper::EndTable();
 		}
 	}
 }

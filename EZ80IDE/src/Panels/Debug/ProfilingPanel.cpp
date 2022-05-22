@@ -3,16 +3,16 @@
 #include "GBC/Debug/Profiler.h"
 #include "GBC/ImGui/ImGuiHelper.h"
 
-namespace gbc
+namespace ide
 {
 	ProfilingPanel::ProfilingPanel(EZ80IDELayer* ez80IDELayer, const std::string& title)
 		: Panel(ez80IDELayer, title) {}
 
 	void ProfilingPanel::OnImGuiRender(int)
 	{
-		if (ImGuiHelper::BeginTable("Profiling", 2))
+		if (gbc::ImGuiHelper::BeginTable("Profiling", 2))
 		{
-			if (ImGuiHelper::Checkbox(m_Profiling ? "Stop Profiling" : "Start Profiling", &m_Profiling))
+			if (gbc::ImGuiHelper::Checkbox(m_Profiling ? "Stop Profiling" : "Start Profiling", &m_Profiling))
 			{
 				if (m_Profiling)
 					GBC_PROFILE_BEGIN_RUNTIME("Runtime", (std::wstring(L"ProfileSessions/GBCProfileRuntime") += std::to_wstring(++m_ProfileCount)) += L".json");
@@ -20,7 +20,7 @@ namespace gbc
 					GBC_PROFILE_END_RUNTIME();
 			}
 
-			ImGuiHelper::EndTable();
+			gbc::ImGuiHelper::EndTable();
 		}
 	}
 }

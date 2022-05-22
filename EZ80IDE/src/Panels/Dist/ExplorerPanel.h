@@ -6,7 +6,7 @@
 #include "Panels/Panel.h"
 #include <filesystem>
 
-namespace gbc
+namespace ide
 {
 	class ExplorerPanel : public Panel
 	{
@@ -53,7 +53,7 @@ namespace gbc
 		bool m_SelectedFilepathIsDirectory = true;
 		bool m_SelectedFilepathDeleteAllowed = false;
 	private:
-		DirectoryChange::Notifier m_Notifier;
+		gbc::DirectoryChange::Notifier m_Notifier;
 		bool OnDirectoryNotification(bool error);
 	private:
 		static constexpr char s_pOptionsPopupTitle[] = "ExplorerOptionsPopup";

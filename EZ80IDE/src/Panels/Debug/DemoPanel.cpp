@@ -2,7 +2,7 @@
 #if GBC_CONFIG_DEBUG
 #include <imgui/imgui.h>
 
-namespace gbc
+namespace ide
 {
 	DemoPanel::DemoPanel(EZ80IDELayer* ez80IDELayer, const std::string& title)
 		: Panel(ez80IDELayer, title) {}

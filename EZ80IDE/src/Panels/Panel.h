@@ -6,7 +6,7 @@
 #include <imgui/imgui.h>
 #include <string>
 
-namespace gbc
+namespace ide
 {
 	class EZ80IDELayer;
 
@@ -19,7 +19,7 @@ namespace gbc
 		constexpr virtual ~Panel() = default;
 
 		void OnImGuiRender();
-		constexpr virtual void OnEvent(Event& event) {}
+		constexpr virtual void OnEvent(gbc::Event& event) {}
 
 		constexpr const std::string& GetDefaultTitle() const noexcept { return m_Title; }
 

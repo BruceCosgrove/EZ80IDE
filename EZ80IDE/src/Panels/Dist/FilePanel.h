@@ -4,7 +4,7 @@
 #include "Panels/Panel.h"
 #include <filesystem>
 
-namespace gbc
+namespace ide
 {
 	class FilePanel : public Panel
 	{

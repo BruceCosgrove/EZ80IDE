@@ -2,7 +2,7 @@
 
 #include "Panel.h"
 
-namespace gbc
+namespace ide
 {
 	// Keeps track of a list of panels. Will deallocate panels itself.
 	// Orders panels with the most recently focused ones at the top (aka the back/end of the vector).
@@ -12,7 +12,7 @@ namespace gbc
 		~PanelStack() noexcept;
 	public:
 		// Calls OnEvent for the focused panel, if present.
-		void OnEvent(Event& event);
+		void OnEvent(gbc::Event& event);
 
 		// Updates the panel order.
 		void UpdateOrder() noexcept;

@@ -1,18 +1,12 @@
 VULKAN_SDK = os.getenv("VULKAN_SDK")
 
 includedir = {}
-includedir["assimp"] = "%{wks.location}/GBC/vendor/assimp/include"
-includedir["box2d"] = "%{wks.location}/GBC/vendor/box2d/include"
 includedir["glad"] = "%{wks.location}/GBC/vendor/glad/include"
 includedir["glfw"] = "%{wks.location}/GBC/vendor/glfw/include"
 includedir["imgui"] = "%{wks.location}/GBC/vendor/imgui/include"
-includedir["imguizmo"] = "%{wks.location}/GBC/vendor/imguizmo/include"
 includedir["stb"] = "%{wks.location}/GBC/vendor/stb/include"
-includedir["yaml"] = "%{wks.location}/GBC/vendor/yaml/include"
 -- Header-only; they don't have their own visual studio project
-includedir["entt"] = "%{wks.location}/GBC/vendor/entt/include"
 includedir["glm"] = "%{wks.location}/GBC/vendor/glm/include"
-includedir["siv"] = "%{wks.location}/GBC/vendor/siv/include"
 includedir["spdlog"] = "%{wks.location}/GBC/vendor/spdlog/include"
 -- Header+Lib; they also don't have their own visual studio project
 includedir["VulkanSDK"] = "%{VULKAN_SDK}/Include"

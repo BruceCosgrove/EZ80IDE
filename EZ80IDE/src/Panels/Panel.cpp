@@ -1,7 +1,7 @@
 #include "Panel.h"
 #include <imgui/imgui.h>
 
-namespace gbc
+namespace ide
 {
 	void Panel::OnImGuiRender()
 	{
