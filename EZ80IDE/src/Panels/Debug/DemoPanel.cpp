@@ -1,5 +1,4 @@
 #include "DemoPanel.h"
-#if GBC_ENABLE_IMGUI
 #if GBC_CONFIG_DEBUG
 #include <imgui/imgui.h>
 
@@ -15,5 +14,4 @@ namespace gbc
 		SetEnabled(enabled);
 	}
 }
-#endif
 #endif

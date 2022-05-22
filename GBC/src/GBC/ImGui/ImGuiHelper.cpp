@@ -102,11 +102,10 @@ namespace gbc
 			return false;
 		}
 
-		constexpr ImGuiTableColumnFlags columnFlags = ImGuiTableColumnFlags_WidthAuto;
-		ImGui::TableSetupColumn(nullptr, columnFlags);
+		ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_WidthAuto);
 		ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_None);
 		for (int32_t i = 2; i < columnCount; i++)
-			ImGui::TableSetupColumn(nullptr, columnFlags);
+			ImGui::TableSetupColumn(nullptr, ImGuiTableColumnFlags_None);
 
 		NextTableColumn();
 		return true;
@@ -132,98 +131,77 @@ namespace gbc
 		ImGui::PopStyleVar(2);
 	}
 
-	bool ImGuiHelper::InputText(char* buffer, size_t size, ImGuiInputTextFlags flags)
-	{
-		ImGui::SetKeyboardFocusHere();
-		return ImGui::InputText("", buffer, size, flags) || (!ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left));
-	}
-
-	bool ImGuiHelper::FloatEdit3(float* values, float speed, float minValue, float maxValue)
+	bool ImGuiHelper::InputText(const char* label, char* buffer, size_t size, ImGuiInputTextFlags flags)
 	{
 		bool changed = false;
-		ImGui::PushItemWidth(-FLT_MIN);
+		ImGui::PushID(label);
 
+		NextTableColumn();
+		ImGui::SetNextItemWidth(-FLT_MIN);
+		changed |= ImGui::InputText("", buffer, size, flags);
+		PrevTableColumn();
+		ImGui::Text(label);
+		NextTableColumn();
+
+		ImGui::PopID();
+		return changed;
+	}
+
+	bool ImGuiHelper::DragFloat3(const char* label, float* values, float speed, float minValue, float maxValue)
+	{
+		bool changed = false;
+		ImGui::PushID(label);
+
+		NextTableColumn();
+		ImGui::SetNextItemWidth(-FLT_MIN);
 		changed |= ImGui::DragFloat3("", values, speed, minValue, maxValue);
-
-		ImGui::PopItemWidth();
-		return changed;
-	}
-
-	bool ImGuiHelper::FloatEdit3(const char* label, float* values, float speed, float minValue, float maxValue)
-	{
-		bool changed = false;
-		ImGui::PushID(label);
-
-		NextTableColumn();
-		changed |= FloatEdit3(values, speed, minValue, maxValue);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
 		return changed;
 	}
 
-	bool ImGuiHelper::FloatEdit2(float* values, float speed, float minValue, float maxValue)
+	bool ImGuiHelper::DragFloat2(const char* label, float* values, float speed, float minValue, float maxValue)
 	{
 		bool changed = false;
-		ImGui::PushItemWidth(-FLT_MIN);
+		ImGui::PushID(label);
 
+		NextTableColumn();
+		ImGui::SetNextItemWidth(-FLT_MIN);
 		changed |= ImGui::DragFloat2("", values, speed, minValue, maxValue);
-
-		ImGui::PopItemWidth();
-		return changed;
-	}
-
-	bool ImGuiHelper::FloatEdit2(const char* label, float* values, float speed, float minValue, float maxValue)
-	{
-		bool changed = false;
-		ImGui::PushID(label);
-
-		NextTableColumn();
-		changed |= FloatEdit2(values, speed, minValue, maxValue);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
 		return changed;
 	}
 
-	bool ImGuiHelper::FloatEdit(float* value, float speed, float minValue, float maxValue)
+	bool ImGuiHelper::DragFloat(const char* label, float* value, float speed, float minValue, float maxValue)
 	{
 		bool changed = false;
-		ImGui::PushItemWidth(-FLT_MIN);
+		ImGui::PushID(label);
 
+		NextTableColumn();
+		ImGui::SetNextItemWidth(-FLT_MIN);
 		changed |= ImGui::DragFloat("", value, speed, minValue, maxValue);
-
-		ImGui::PopItemWidth();
-		return changed;
-	}
-
-	bool ImGuiHelper::FloatEdit(const char* label, float* value, float speed, float minValue, float maxValue)
-	{
-		bool changed = false;
-		ImGui::PushID(label);
-
-		NextTableColumn();
-		changed |= FloatEdit(value, speed, minValue, maxValue);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
 		return changed;
 	}
 
-	bool ImGuiHelper::Combo(int32_t* selectedItem, const char* const* names, int32_t count)
+	bool ImGuiHelper::Combo(uint32_t* selectedItem, const char* const* names, uint32_t count)
 	{
 		bool changed = false;
-		ImGui::PushItemWidth(-FLT_MIN);
 
 		if (ImGui::BeginCombo("", names[*selectedItem]))
 		{
-			for (int32_t i = 0; i < count; i++)
+			for (uint32_t i = 0; i < count; i++)
 			{
 				bool selected = *selectedItem == i;
 				if (ImGui::Selectable(names[i], &selected) && *selectedItem != i)
@@ -237,33 +215,22 @@ namespace gbc
 			ImGui::EndCombo();
 		}
 
-		ImGui::PopItemWidth();
 		return changed;
 	}
 
-	bool ImGuiHelper::Combo(const char* label, int32_t* selectedItem, const char* const* names, int32_t count)
+	bool ImGuiHelper::Combo(const char* label, uint32_t* selectedItem, const char* const* names, uint32_t count)
 	{
 		bool changed = false;
 		ImGui::PushID(label);
 
 		NextTableColumn();
+		ImGui::SetNextItemWidth(-FLT_MIN);
 		changed |= Combo(selectedItem, names, count);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
-		return changed;
-	}
-
-	bool ImGuiHelper::Checkbox(bool* value)
-	{
-		bool changed = false;
-		ImGui::PushItemWidth(-FLT_MIN);
-
-		changed |= ImGui::Checkbox("", value);
-
-		ImGui::PopItemWidth();
 		return changed;
 	}
 
@@ -273,23 +240,13 @@ namespace gbc
 		ImGui::PushID(label);
 
 		NextTableColumn();
-		changed |= Checkbox(value);
+		ImGui::SetNextItemWidth(-FLT_MIN);
+		changed |= ImGui::Checkbox("", value);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
-		return changed;
-	}
-
-	bool ImGuiHelper::ColorEdit3(float* values)
-	{
-		bool changed = false;
-		ImGui::PushItemWidth(-FLT_MIN);
-
-		changed |= ImGui::ColorEdit3("", values);
-
-		ImGui::PopItemWidth();
 		return changed;
 	}
 
@@ -299,23 +256,12 @@ namespace gbc
 		ImGui::PushID(label);
 
 		NextTableColumn();
-		changed |= ColorEdit3(values);
+		changed |= ImGui::ColorEdit3("", values);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
-		return changed;
-	}
-
-	bool ImGuiHelper::ColorEdit4(float* values)
-	{
-		bool changed = false;
-		ImGui::PushItemWidth(-FLT_MIN);
-
-		changed |= ImGui::ColorEdit4("", values);
-
-		ImGui::PopItemWidth();
 		return changed;
 	}
 
@@ -325,9 +271,9 @@ namespace gbc
 		ImGui::PushID(label);
 
 		NextTableColumn();
-		changed |= ColorEdit4(values);
+		changed |= ImGui::ColorEdit4("", values);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
@@ -362,7 +308,7 @@ namespace gbc
 		NextTableColumn();
 		changed |= TextEdit(value);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
@@ -406,7 +352,7 @@ namespace gbc
 		NextTableColumn();
 		auto payload = ButtonDragDropTarget(buttonText, dragDropType, acceptFunc, flags);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();

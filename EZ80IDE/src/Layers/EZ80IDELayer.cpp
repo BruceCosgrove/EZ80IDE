@@ -1,18 +1,13 @@
 #include "EZ80IDELayer.h"
 #include "GBC/Util/Util.h"
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
 #include "Panels/Dist/ExplorerPanel.h"
 #include "Panels/Dist/FilePanel.h"
-#if GBC_ENABLE_STATS
-	#include "Panels/Release/RendererInfoPanel.h"
-#endif
-#if GBC_ENABLE_PROFILE_RUNTIME
-	#include "Panels/Debug/ProfilingPanel.h"
-#endif
-#if GBC_CONFIG_DEBUG
-	#include "Panels/Debug/DemoPanel.h"
-#endif
+#include "Panels/Release/RendererInfoPanel.h"
+#include "Panels/Debug/ProfilingPanel.h"
+#include "Panels/Debug/DemoPanel.h"
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
+#include <fstream>
 
 namespace gbc
 {
@@ -74,7 +69,10 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		//Application::Get().GetImGuiWrapper().SetBlockEvents(!sceneViewportPanel->IsFocused() && !sceneViewportPanel->IsHovered());
 
 		panels.UpdateOrder();
+		SetStates(IDEState_ExplorerFocused, explorerPanel->IsFocused());
+
 		filePanels.UpdateOrder();
+		SetStates(IDEState_FileFocused, filePanels.HasFocusedPanel());
 	}
 
 	void EZ80IDELayer::OnRender()
@@ -96,17 +94,20 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		for (auto filePanel : filePanels)
 			filePanel->OnImGuiRender();
 
+		if (openPopup)
+			(this->*openPopup)();
+
 		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(2360, 0), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin("Panel Debug", nullptr, ImGuiWindowFlags_NoSavedSettings))
 		{
 #define DEBUG_DRAW_PANEL_STACK(name, stack) \
-			ImGuiHelper::Text(name); \
+			ImGui::Text(name); \
 			ImGuiHelper::BeginTable(name, 3, ImGuiHelper::defaultTableFlags | ImGuiTableFlags_Borders); \
 			for (auto it = stack.crbegin(); it != stack.crend(); ++it) \
 			{ \
 				Panel* panel = *it; \
-				ImGuiHelper::Text(panel->IsEnabled() ? "Enabled" : "Disabled"); \
+				ImGui::Text(panel->IsEnabled() ? "Enabled" : "Disabled"); \
 				ImGuiHelper::NextTableColumn(); \
 				ImGuiHelper::Text(panel->IsFocused() ? "Focused" : "Unfocused", panel->GetTitle().c_str()); \
 				if (it != stack.crend() - 1) \
@@ -130,7 +131,10 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			ImGui::Indent();
 			DEBUG_DRAW_STATE(WorkspaceOpen);
 			DEBUG_DRAW_STATE(FileOpen);
+			DEBUG_DRAW_STATE(FileFocused);
+			DEBUG_DRAW_STATE(ExplorerFocused);
 			DEBUG_DRAW_STATE(PopupOpen);
+			DEBUG_DRAW_STATE(ModalPopup);
 			ImGui::Unindent();
 #undef DEBUG_DRAW_STATE
 			ImGui::End();
@@ -171,19 +175,21 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		{
 			if (ImGui::BeginMenu("File"))
 			{
-				if (ImGui::MenuItem("Open Workspace...", "Ctrl+O", false, HasSubStates(IDEState_None)))
+				if (ImGui::MenuItem("Open Workspace...", "Ctrl+O", false, HasSubStates(IDEState_None, IDEState_ModalPopup)))
 					OpenWorkspace();
-				if (ImGui::MenuItem("New File...", "Ctrl+N", false, HasSubStates(IDEState_WorkspaceOpen)))
+				if (ImGui::MenuItem("New File...", "Ctrl+N", false, HasSubStates(IDEState_WorkspaceOpen, IDEState_ModalPopup)))
 					NewFile();
-				if (ImGui::MenuItem("New Folder...", "Ctrl+Shift+N", false, HasSubStates(IDEState_WorkspaceOpen)))
+				if (ImGui::MenuItem("New Folder...", "Ctrl+Shift+N", false, HasSubStates(IDEState_WorkspaceOpen, IDEState_ModalPopup)))
 					NewFolder();
-				if (ImGui::MenuItem("Save File", "Ctrl+S", false, HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen)))
+				if (ImGui::MenuItem("Save File", "Ctrl+S", false, HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen, IDEState_ModalPopup)))
 					SaveFile();
-				if (ImGui::MenuItem("Save All", "Ctrl+Shift+S", false, HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen)))
+				if (ImGui::MenuItem("Save All", "Ctrl+Shift+S", false, HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen, IDEState_ModalPopup)))
 					SaveAll();
-				if (ImGui::MenuItem("Close File", "Ctrl+W", false, HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen)))
+				if (ImGui::MenuItem("Rename...", "Ctrl+R", false, HasSubStates(IDEState_WorkspaceOpen, IDEState_ModalPopup)))
+					Rename();
+				if (ImGui::MenuItem("Close File", "Ctrl+W", false, HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen, IDEState_ModalPopup)))
 					CloseFile();
-				if (ImGui::MenuItem("Close Workspace", "Ctrl+Shift+W", false, HasSubStates(IDEState_WorkspaceOpen)))
+				if (ImGui::MenuItem("Close Workspace", "Ctrl+Shift+W", false, HasSubStates(IDEState_WorkspaceOpen, IDEState_ModalPopup)))
 					CloseWorkspace();
 
 				ImGui::Separator();
@@ -199,7 +205,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				if (ImGui::BeginMenu("Panels"))
 				{
 					for (auto panel : panels)
-						if (ImGui::MenuItem(panel->GetTitle().c_str()))
+						if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, panel->IsEnabled()))
 							panel->ToggleEnabled();
 					ImGui::EndMenu();
 				}
@@ -209,6 +215,338 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			ImGui::EndMenuBar();
 		}
+	}
+
+	void EZ80IDELayer::UI_Popup_NewFile()
+	{
+		static constexpr char title[] = "New File";
+		static constexpr ImGuiPopupFlags popupFlags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+		static constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+
+		ImGui::OpenPopup(title, popupFlags);
+
+		static constexpr const char* extensions[]{ ".ez80", ".inc", ".asm" };
+		static bool firstFrame = true;
+		static bool secondFrame = false;
+		bool closed = false;
+		bool create = false;
+
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, { 0.5f });
+		ImGui::SetNextWindowSize(ImVec2{ 300.0f, 0.0f }, ImGuiCond_Appearing);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
+		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
+		{
+			if (ImGuiHelper::BeginTable("NewFilePopupTable", 2, ImGuiTableFlags_None))
+			{
+				if (secondFrame)
+					ImGui::SetKeyboardFocusHere();
+				ImGuiHelper::Text("Directory", newFileInitialDirectoryString.c_str());
+				ImGuiHelper::NextTableColumn();
+
+				(void)ImGuiHelper::InputText("Name", newFilenameBuffer, sizeof(newFilenameBuffer) / sizeof(*newFilenameBuffer));
+				ImGuiHelper::NextTableColumn();
+
+				(void)ImGuiHelper::Combo("Extension", &newFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
+
+				ImGuiHelper::EndTable();
+			}
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
+			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
+
+			if (ImGui::Button("Create", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			{
+				closed = true;
+				create = !!*newFilenameBuffer;
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+				closed = true;
+
+			ImGui::PopStyleVar();
+
+			if (closed)
+			{
+				ImGui::CloseCurrentPopup();
+				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
+				openPopup = nullptr;
+				firstFrame = true;
+				secondFrame = false;
+			}
+			else if (firstFrame)
+			{
+				firstFrame = false;
+				secondFrame = true;
+			}
+			else if (secondFrame)
+				secondFrame = false;
+
+			if (create)
+			{
+				newFileSelectedExtension = newFilePendingExtension;
+
+				std::filesystem::path filepath = workspaceDirectory;
+				filepath /= newFileInitialDirectory;
+				filepath /= (char*)newFilenameBuffer;
+				filepath.replace_extension(extensions[newFileSelectedExtension]);
+				FocusOrAddFilePanel(filepath);
+			}
+
+			ImGui::EndPopup();
+		}
+		ImGui::PopStyleVar();
+	}
+
+	void EZ80IDELayer::UI_Popup_NewFolder()
+	{
+		static constexpr char title[] = "New Folder";
+		static constexpr ImGuiPopupFlags popupFlags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+		static constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+
+		ImGui::OpenPopup(title, popupFlags);
+
+		static bool firstFrame = true;
+		static bool secondFrame = false;
+		bool closed = false;
+		bool create = false;
+
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, { 0.5f });
+		ImGui::SetNextWindowSize(ImVec2{ 300.0f, 0.0f }, ImGuiCond_Appearing);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
+		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
+		{
+			if (ImGuiHelper::BeginTable("NewFolderPopupTable", 2, ImGuiTableFlags_None))
+			{
+				if (secondFrame)
+					ImGui::SetKeyboardFocusHere();
+				ImGuiHelper::Text("Directory", newFileInitialDirectoryString.c_str());
+				ImGuiHelper::NextTableColumn();
+
+				(void)ImGuiHelper::InputText("Name", newFilenameBuffer, sizeof(newFilenameBuffer) / sizeof(*newFilenameBuffer));
+
+				ImGuiHelper::EndTable();
+			}
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
+			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
+
+			if (ImGui::Button("Create", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			{
+				closed = true;
+				create = !!*newFilenameBuffer;
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+				closed = true;
+
+			ImGui::PopStyleVar();
+
+			if (closed)
+			{
+				ImGui::CloseCurrentPopup();
+				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
+				openPopup = nullptr;
+				firstFrame = true;
+				secondFrame = false;
+			}
+			else if (firstFrame)
+			{
+				firstFrame = false;
+				secondFrame = true;
+			}
+			else if (secondFrame)
+				secondFrame = false;
+
+			if (create)
+			{
+				std::filesystem::path filepath = workspaceDirectory;
+				filepath /= newFileInitialDirectory;
+				filepath /= (char*)newFilenameBuffer;
+				bool status = FileIO::MakeDirectoryIfNotExists(filepath);
+				GBC_ASSERT(status, "Failed to create new directory.");
+			}
+
+			ImGui::EndPopup();
+		}
+		ImGui::PopStyleVar();
+	}
+
+	void EZ80IDELayer::UI_Popup_Rename()
+	{
+		static constexpr char titleFile[] = "Rename File";
+		static constexpr char titleFolder[] = "Rename Folder";
+		const char* title = renamingFolder ? titleFolder : titleFile;
+
+		static constexpr ImGuiPopupFlags popupFlags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+		static constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+
+		ImGui::OpenPopup(title, popupFlags);
+
+		static constexpr const char* extensions[]{ ".ez80", ".inc", ".asm" };
+		static bool firstFrame = true;
+		static bool secondFrame = false;
+		bool closed = false;
+		bool rename = false;
+
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, { 0.5f });
+		ImGui::SetNextWindowSize(ImVec2{ 300.0f, 0.0f }, ImGuiCond_Appearing);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
+		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
+		{
+			if (ImGuiHelper::BeginTable("RenamePopupTable", 2, ImGuiTableFlags_None))
+			{
+				if (secondFrame)
+					ImGui::SetKeyboardFocusHere();
+				ImGuiHelper::Text("Directory", newFileInitialDirectoryString.c_str());
+				ImGuiHelper::NextTableColumn();
+
+				(void)ImGuiHelper::InputText("Name", newFilenameBuffer, sizeof(newFilenameBuffer) / sizeof(*newFilenameBuffer));
+
+				if (!renamingFolder)
+				{
+					ImGuiHelper::NextTableColumn();
+					(void)ImGuiHelper::Combo("Extension", &newFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
+				}
+
+				ImGuiHelper::EndTable();
+			}
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
+			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
+
+			if (ImGui::Button("Rename", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			{
+				closed = true;
+				rename = !!*newFilenameBuffer; // rename if newFilenameBuffer is not empty
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+				closed = true;
+
+			ImGui::PopStyleVar();
+
+			if (closed)
+			{
+				ImGui::CloseCurrentPopup();
+				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
+				openPopup = nullptr;
+				firstFrame = true;
+				secondFrame = false;
+			}
+			else if (firstFrame)
+			{
+				firstFrame = false;
+				secondFrame = true;
+			}
+			else if (secondFrame)
+				secondFrame = false;
+
+			if (rename)
+			{
+				auto filepathNew = workspaceDirectory / newFileInitialDirectory;
+				filepathNew /= (char*)newFilenameBuffer;
+
+				if (renamingFolder)
+				{
+					auto filepathOld = workspaceDirectory / newFileInitialDirectory;
+					bool status = FileIO::RenameDirectory(filepathOld, filepathNew);
+					GBC_ASSERT(status, "Failed to rename directory.");
+
+					for (auto panel : filePanels)
+					{
+						FilePanel* filePanel = (FilePanel*)panel;
+						if (FileIO::IsAncestorOf(filepathOld, filePanel->GetFilepath()))
+						{
+							auto relative = FileIO::Relative(filePanel->GetFilepath(), filepathOld);
+							RenameFilePanel(filePanel->GetFilepath(), filepathNew / relative);
+						}
+					}
+				}
+				else
+				{
+					newFileSelectedExtension = newFilePendingExtension;
+					filepathNew.replace_extension(extensions[newFileSelectedExtension]);
+
+					if (renamingOpenFile)
+						RenameFilePanel(((FilePanel*)filePanels.Peek())->GetFilepath(), filepathNew);
+					else
+					{
+						bool status = FileIO::RenameFile(explorerPanel->GetSelectedFilepath(), filepathNew);
+						GBC_ASSERT(status, "Failed to rename file.");
+					}
+				}
+			}
+
+			ImGui::EndPopup();
+		}
+		ImGui::PopStyleVar();
+	}
+
+	void EZ80IDELayer::UI_Popup_ConfirmDelete()
+	{
+		static constexpr char titleFile[] = "Delete File";
+		static constexpr char titleFolder[] = "Delete Folder";
+		const char* title = deletingFolder ? titleFolder : titleFile;
+
+		static constexpr ImGuiPopupFlags popupFlags = ImGuiPopupFlags_NoOpenOverExistingPopup;
+		static constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+
+		ImGui::OpenPopup(title, popupFlags);
+
+		bool closed = false;
+		bool delet3 = false;
+
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, { 0.5f });
+		ImGui::SetNextWindowSize(ImVec2{ 300.0f, 0.0f }, ImGuiCond_Appearing);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
+		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
+		{
+			ImGui::Text("Are you sure you want to delete:\n%s?", deletingMessage.c_str());
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
+			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
+
+			if (ImGui::Button("Delete", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
+			{
+				closed = true;
+				delet3 = true;
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Cancel", buttonSize) || Input::IsKeyPressed(Keycode::Escape))
+				closed = true;
+
+			ImGui::PopStyleVar();
+
+			if (closed)
+			{
+				ImGui::CloseCurrentPopup();
+				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
+				openPopup = nullptr;
+			}
+
+			if (delet3)
+			{
+				if (explorerPanel->IsSelectedFilepathADirectory())
+					DeleteFolder(explorerPanel->GetSelectedFilepath());
+				else
+					DeleteFilePanel(explorerPanel->GetSelectedFilepath());
+			}
+
+			ImGui::EndPopup();
+		}
+		ImGui::PopStyleVar();
 	}
 
 	void EZ80IDELayer::OnEvent(Event& event)
@@ -233,7 +571,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		Keycode keycode = event.GetKeycode();
 		Mods mods = event.GetMods();
 
-		if (HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen))
+		if (HasSubStates(IDEState_WorkspaceOpen | IDEState_FileOpen, IDEState_ModalPopup))
 		{
 			switch (keycode)
 			{
@@ -250,24 +588,44 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			}
 		}
 
-		if (HasSubStates(IDEState_WorkspaceOpen))
+		if (HasSubStates(IDEState_WorkspaceOpen | IDEState_ExplorerFocused))
 		{
 			switch (keycode)
 			{
-			case Keycode::W:
-				if (mods.Are(Mods_Control | Mods_Shift))
-					CloseWorkspace();
+			case Keycode::Delete:
+				if (mods.Are(Mods_None) && explorerPanel->IsSelectedFilepathDeleteAllowed())
+					Delete();
+			case Keycode::C:
+				if (mods.Are(Mods_Shift))
+					CopyPath(explorerPanel->GetSelectedFilepath());
+				if (mods.Are(Mods_Shift | Mods_Alt))
+					CopyRelativePath(explorerPanel->GetSelectedFilepath());
 				break;
+			}
+		}
+
+		if (HasSubStates(IDEState_WorkspaceOpen, IDEState_ModalPopup))
+		{
+			switch (keycode)
+			{
 			case Keycode::N:
 				if (mods.Are(Mods_Control))
 					NewFile();
 				else if (mods.Are(Mods_Control | Mods_Shift))
 					NewFolder();
 				break;
+			case Keycode::R:
+				if (mods.Are(Mods_Control))
+					Rename();
+				break;
+			case Keycode::W:
+				if (mods.Are(Mods_Control | Mods_Shift))
+					CloseWorkspace();
+				break;
 			}
 		}
 
-		if (HasSubStates(IDEState_None))
+		if (HasSubStates(IDEState_None, IDEState_ModalPopup))
 		{
 			switch (keycode)
 			{
@@ -312,6 +670,16 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			std::string titleIDString = std::move(it->second);
 			titleIDs.erase(it);
 			titleIDs[filepathNew] = std::move(titleIDString);
+
+			for (auto panel : filePanels)
+			{
+				FilePanel* filePanel = (FilePanel*)panel;
+				if (filePanel->GetFilepath() == filepathOld)
+				{
+					filePanel->Rename(filepathNew);
+					break;
+				}
+			}
 		}
 	}
 
@@ -340,9 +708,9 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 						break;
 					}
 				}
-
-				FileIO::Delete(filepath);
 			}
+
+			FileIO::Delete(filepath);
 		}
 	}
 
@@ -449,23 +817,42 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	void EZ80IDELayer::NewFile()
 	{
-		GBC_INFO("New File");
+		if (!HasAnySubStates(IDEState_ModalPopup))
+		{
+			GBC_INFO("New File");
 
-		auto initialDirectory = explorerPanel->GetNewFileDirectory();
-		auto filepath = FileDialog::SaveFile(GetFilter(FileType::ez80), initialDirectory);
+			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
+			openPopup = &EZ80IDELayer::UI_Popup_NewFile;
 
-		// TODO: if source directory is not an ancestor of the chosen filepath, show a dialog box informing the user
-		// check box for save my answer, use it every time this happens, and do not show this again + change later in settings
+			newFilePendingExtension = newFileSelectedExtension;
+			memset(&newFilenameBuffer, 0, sizeof(newFilenameBuffer));
 
-		if (FileIO::IsAncestorOf(initialDirectory, filepath))
-			AddFilePanel(filepath);
+			newFileInitialDirectory = FileIO::Relative(explorerPanel->GetNewFileDirectory(), workspaceDirectory);
+			newFileInitialDirectoryString = newFileInitialDirectory.string();
+			newFileInitialDirectoryString.insert(0, 1, '.');
+			newFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
+			newFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
+		}
 	}
 
 	void EZ80IDELayer::NewFolder()
 	{
-		GBC_INFO("New Folder");
+		if (!HasAnySubStates(IDEState_ModalPopup))
+		{
+			GBC_INFO("New Folder");
 
-		//auto initialDirectory = explorerPanel->GetNewFileDirectory();
+			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
+			openPopup = &EZ80IDELayer::UI_Popup_NewFolder;
+
+			newFilePendingExtension = newFileSelectedExtension;
+			memset(&newFilenameBuffer, 0, sizeof(newFilenameBuffer));
+
+			newFileInitialDirectory = FileIO::Relative(explorerPanel->GetNewFileDirectory(), workspaceDirectory);
+			newFileInitialDirectoryString = newFileInitialDirectory.string();
+			newFileInitialDirectoryString.insert(0, 1, '.');
+			newFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
+			newFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
+		}
 	}
 
 	void EZ80IDELayer::OpenWorkspace()
@@ -473,7 +860,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		GBC_INFO("Open Workspace");
 
 		auto filepath = FileDialog::OpenFolder();
-		if (!filepath.empty())
+		if (!filepath.empty() && FileIO::DirectoryExists(filepath))
 		{
 			if (HasSubStates(IDEState_WorkspaceOpen))
 				CloseWorkspace();
@@ -495,6 +882,92 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		for (auto panel : filePanels)
 			if (panel->IsEnabled())
 				((FilePanel*)panel)->Save();
+	}
+
+	void EZ80IDELayer::Rename()
+	{
+		if (!HasAnySubStates(IDEState_ModalPopup))
+		{
+			std::filesystem::path filename;
+			std::wstring_view extension;
+			if (explorerPanel->IsFocused())
+			{
+				filename = explorerPanel->GetSelectedFilepath().filename();
+				extension = std::filesystem::_Parse_extension(filename.native());
+				newFileInitialDirectory = FileIO::Relative(explorerPanel->GetNewFileDirectory(), workspaceDirectory);
+				renamingFolder = extension.empty();
+				if (renamingFolder)
+					newFileInitialDirectory = newFileInitialDirectory.parent_path();
+				else if (!filePanels.Empty())
+				{
+					renamingOpenFile = false;
+					for (auto panel : filePanels)
+					{
+						FilePanel* filePanel = (FilePanel*)panel;
+						if (filePanel->GetFilepath() == explorerPanel->GetSelectedFilepath())
+						{
+							renamingOpenFile = true;
+							break;
+						}
+					}
+				}
+			}
+			else if (HasSubStates(IDEState_FileOpen))
+			{
+				renamingOpenFile = true;
+				renamingFolder = false;
+
+				FilePanel* filePanel = (FilePanel*)filePanels.Peek();
+				filename = filePanel->GetFilepath().filename();
+				extension = std::filesystem::_Parse_extension(filename.native());
+				newFileInitialDirectory = FileIO::Relative(filePanel->GetFilepath(), workspaceDirectory).parent_path();
+			}
+			else // Nothing to rename.
+				return;
+
+			GBC_INFO("Rename");
+
+			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
+			openPopup = &EZ80IDELayer::UI_Popup_Rename;
+
+			std::string filenameString;
+			if (renamingFolder)
+				filenameString = filename.string();
+			else
+			{
+				filenameString = filename.replace_extension().string();
+				extension = extension.substr(1);
+
+				newFilePendingExtension = 0;
+				if (extension == L"inc")
+					newFilePendingExtension = 1;
+				else if (extension == L"asm")
+					newFilePendingExtension = 2;
+			}
+
+			strcpy_s(newFilenameBuffer, filenameString.length() + 1, filenameString.c_str());
+
+			newFileInitialDirectoryString = newFileInitialDirectory.string();
+			newFileInitialDirectoryString.insert(0, 1, '.');
+			newFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
+			newFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
+		}
+	}
+
+	void EZ80IDELayer::Delete()
+	{
+		if (!HasAnySubStates(IDEState_ModalPopup))
+		{
+			GBC_INFO("Delete");
+
+			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
+			openPopup = &EZ80IDELayer::UI_Popup_ConfirmDelete;
+
+			deletingFolder = explorerPanel->IsSelectedFilepathADirectory();
+			deletingMessage = explorerPanel->GetSelectedFilepath().filename().string();
+			if (deletingFolder && !FileIO::IsEmptyDirectory(explorerPanel->GetSelectedFilepath()))
+				deletingMessage += " and all its contents";
+		}
 	}
 
 	void EZ80IDELayer::CloseFile()
@@ -521,6 +994,16 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		SetWorkspaceDirectory({});
 	}
 
+	void EZ80IDELayer::CopyPath(const std::filesystem::path& filepath)
+	{
+		Input::SetClipboardString(filepath.string());
+	}
+
+	void EZ80IDELayer::CopyRelativePath(const std::filesystem::path& filepath)
+	{
+		Input::SetClipboardString(FileIO::Relative(filepath, workspaceDirectory).string());
+	}
+
 	void EZ80IDELayer::SaveAndCloseWorkspace()
 	{
 		if (HasSubStates(IDEState_WorkspaceOpen))
@@ -536,7 +1019,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				{
 					auto filepathString = filepath.string();
 					titleIDsFile.write(filepathString.c_str(), filepathString.length());
-					titleIDsFile.put(' ');
+					titleIDsFile.put('\n');
 					titleIDsFile.write(id.c_str() + FilePanel::identifierLength, id.length() - FilePanel::identifierLength);
 					titleIDsFile.put('\n');
 				}
@@ -601,7 +1084,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				size_t filepathStart = 0;
 				do
 				{
-					size_t filepathEnd = titleIDFile.find(' ', filepathStart);
+					size_t filepathEnd = titleIDFile.find('\n', filepathStart);
 					if (filepathEnd == std::string::npos)
 						break;
 

@@ -10,7 +10,11 @@ namespace gbc
 	void PanelStack::OnEvent(Event& event)
 	{
 		if (!Empty())
-			panels.back()->OnEvent(event);
+		{
+			auto panel = panels.back();
+			if (panel->IsFocused())
+				panel->OnEvent(event);
+		}
 	}
 
 	void PanelStack::UpdateOrder() noexcept

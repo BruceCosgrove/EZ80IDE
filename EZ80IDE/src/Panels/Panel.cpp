@@ -1,5 +1,4 @@
 #include "Panel.h"
-#if GBC_ENABLE_IMGUI
 #include <imgui/imgui.h>
 
 namespace gbc
@@ -95,4 +94,3 @@ namespace gbc
 		}
 	}
 }
-#endif

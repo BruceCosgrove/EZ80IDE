@@ -16,7 +16,7 @@ namespace gbc
 
 		constexpr const char* operator[](int index) const
 		{
-			GBC_CORE_ASSERT(index < count, "Command Line Args index out of bounds!");
+			GBC_CORE_ASSERT(0 <= index && index < count, "Command Line Args index out of bounds!");
 			return args[index];
 		}
 	};
@@ -35,7 +35,7 @@ namespace gbc
 #endif
 
 		void Close();
-	protected:
+	public:
 		void PushLayer(Layer* layer);
 		void PushOverlay(Layer* overlay);
 		Layer* PopLayer();

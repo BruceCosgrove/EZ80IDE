@@ -40,11 +40,20 @@ namespace gbc
 		windowTitle += defaultTitle;
 	}
 
-	void FilePanel::SetFilepath(const std::filesystem::path& filepath) noexcept
+	void FilePanel::Rename(const std::filesystem::path& filepath) noexcept
 	{
-		auto& ide = GetIDE();
-		ide.RenameFilePanel(this->filepath, filepath);
-		this->filepath = filepath;
+		if (FileIO::FileExists(this->filepath))
+		{
+			Save();
+			FileIO::RenameFile(this->filepath, filepath);
+			this->filepath = filepath;
+		}
+		else
+		{
+			this->filepath = filepath;
+			Save();
+		}
+		UpdateWindowTitle();
 	}
 
 	void FilePanel::SetEnabled(bool enabled) noexcept

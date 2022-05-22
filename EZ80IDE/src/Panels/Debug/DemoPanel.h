@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
 #if GBC_CONFIG_DEBUG
 #include "Panels/Panel.h"
 
@@ -17,5 +16,4 @@ namespace gbc
 		constexpr virtual bool ProvideDefaultWindow() const override { return false; }
 	};
 }
-#endif
 #endif

@@ -1,17 +1,5 @@
 #pragma once
 
-// I only use this with absolute paths, so it's completely fine.
-#include <xhash>
-#include <filesystem>
-_STD_BEGIN
-template<>
-struct hash<_STD filesystem::path> {
-	_NODISCARD size_t operator()(const _STD filesystem::path& filepath) const noexcept {
-		return hash<_STD filesystem::path::string_type>()(filepath.native());
-	}
-};
-_STD_END
-
 #include <gbc.h>
 #include "Panels/PanelStack.h"
 
@@ -23,7 +11,10 @@ namespace gbc
 		IDEState_None               = 0,
 		IDEState_WorkspaceOpen      = 1 << 0,
 		IDEState_FileOpen           = 1 << 1,
-		IDEState_PopupOpen          = 1 << 2,
+		IDEState_FileFocused        = 1 << 2,
+		IDEState_ExplorerFocused    = 1 << 3,
+		IDEState_PopupOpen          = 1 << 4,
+		IDEState_ModalPopup         = 1 << 5,
 
 		// Automatically creates the ide state mask
 		_IDEState_Last, IDEState_Mask = (_IDEState_Last << 1) - 3
@@ -59,6 +50,9 @@ namespace gbc
 		// Sets the current state.
 		constexpr void SetState(IDEState state) noexcept { this->state = state & IDEState_Mask; }
 
+		// Adds or removes the given states depending on the condition.
+		constexpr void SetStates(IDEState states, bool condition) noexcept { if (condition) AddStates(states); else RemoveStates(states); }
+
 		// Adds a state to the current state.
 		constexpr void AddStates(IDEState states) noexcept { state |= states & IDEState_Mask; }
 
@@ -70,14 +64,13 @@ namespace gbc
 	private:
 		IDEState state = IDEState_None;
 	private: // Operations.
-		// Opens a new file dialog and creates a new file panel.
-		// TODO: create custom modal popup that only allows them to go up to the src directory.
+		// Opens a modal popup to create a new file.
 		void NewFile();
 
 		// Opens a modal popup to create a new folder.
 		void NewFolder();
 
-		// Opens a workspace, closes the current one first if one is open.
+		// Opens a file dialog to select a new workspace, closes the current one first, if present.
 		void OpenWorkspace();
 
 		// Saves the most recently focused file panel.
@@ -86,12 +79,24 @@ namespace gbc
 		// Saves all open file panels.
 		void SaveAll();
 
+		// Renames the selected file/folder if the explorer is focused, otherwise renames the most recently focused file panel.
+		void Rename();
+
+		// Deletes the selected file/folder if the explorer is focused.
+		void Delete();
+
 		// Closes the most recently focused file panel.
 		void CloseFile();
 
 		// Closes the active workspace, if present.
 		void CloseWorkspace();
+	private:
+		// Sets the user's clipboard to a utf-8 encoded string converted from the given filepath.
+		void CopyPath(const std::filesystem::path& filepath);
 
+		// Sets the user's clipboard to a utf-8 encoded string converted from the given filepath, relative to the working directory.
+		void CopyRelativePath(const std::filesystem::path& filepath);
+	private:
 		// Saves a workspace's metadata and clears workspace data cache.
 		void SaveAndCloseWorkspace();
 
@@ -99,7 +104,7 @@ namespace gbc
 		void SetWorkspaceDirectory(const std::filesystem::path& workspaceDirectory);
 
 		// Gets the active workspace directory.
-		constexpr const std::filesystem::path& GetWorkspaceDirectory() const noexcept { return workspaceDirectory; }
+		inline const std::filesystem::path& GetWorkspaceDirectory() const noexcept { return workspaceDirectory; }
 	private: // Filepath caches.
 		std::filesystem::path workspaceDirectory;
 		std::filesystem::path metaDataDirectory;
@@ -148,11 +153,30 @@ namespace gbc
 		void UI_Dockspace();
 		void UI_MenuBar();
 
-		template<typename T> T* AddPanel(const std::string& name);
-		PanelStack panels;
+		void UI_Popup_NewFile();
+		void UI_Popup_NewFolder();
+		void UI_Popup_Rename();
+		void UI_Popup_ConfirmDelete();
 
+		void(EZ80IDELayer::* openPopup)() = nullptr;
+
+		uint32_t newFileSelectedExtension = 0;
+		uint32_t newFilePendingExtension = 0;
+		char newFilenameBuffer[__std_fs_max_path];
+		std::filesystem::path newFileInitialDirectory;
+		std::string newFileInitialDirectoryString;
+
+		bool renamingFolder = false;
+		bool renamingOpenFile = false;
+
+		std::string deletingMessage;
+		bool deletingFolder = false;
+	private:
 		friend class ExplorerPanel;
 		ExplorerPanel* explorerPanel = nullptr;
+
+		template<typename T> T* AddPanel(const std::string& name);
+		PanelStack panels;
 
 		friend class FilePanel;
 		FilePanel* AddFilePanel(const std::filesystem::path& filepath, uint64_t id = 0);

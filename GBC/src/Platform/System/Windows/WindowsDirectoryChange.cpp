@@ -22,7 +22,8 @@ namespace gbc::DirectoryChange
 	}
 
 	Notifier::Notifier(Notifier&& notifier) noexcept
-		: thread(std::move(notifier.thread)), closeHandle(notifier.closeHandle)
+		: thread(std::move(notifier.thread))
+		, closeHandle(notifier.closeHandle)
 	{
 		notifier.closeHandle = nullptr;
 	}
@@ -60,7 +61,7 @@ namespace gbc::DirectoryChange
 		// Notes:
 		//	length of "GBCDirectoryChange" is 18
 		//	there are 14 total null terminators because that is the number of base 36 digits that 2^64 - 1 is.
-		//	14th null terminator is added by the compiler
+		//	14th null terminator is added by the compiler.
 		static uint64_t id = 0;
 		static wchar_t eventNameBuffer[] = L"GBCDirectoryChange\0\0\0\0\0\0\0\0\0\0\0\0\0";
 		_ui64tow_s(++id, eventNameBuffer + 18, 14, 36);
@@ -88,7 +89,7 @@ namespace gbc::DirectoryChange
 			if (handles[1] == INVALID_HANDLE_VALUE)
 			{
 				// The notification could not be created
-				FindCloseChangeNotification(handles[0]);
+				(void)FindCloseChangeNotification(handles[0]);
 				waiting = false;
 				return;
 			}
@@ -119,8 +120,8 @@ namespace gbc::DirectoryChange
 				}
 			}
 
-			FindCloseChangeNotification(handles[1]);
-			FindCloseChangeNotification(handles[0]);
+			(void)FindCloseChangeNotification(handles[1]);
+			(void)FindCloseChangeNotification(handles[0]);
 		}, notificationFunc);
 
 		// Wait for this notification's closeHandle to be set or for an error to occur

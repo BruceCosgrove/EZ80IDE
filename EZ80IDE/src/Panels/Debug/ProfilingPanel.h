@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
 #if GBC_ENABLE_PROFILE_RUNTIME
 #include "Panels/Panel.h"
 
@@ -18,5 +17,4 @@ namespace gbc
 		uint32_t profileCount = 0;
 	};
 }
-#endif
 #endif

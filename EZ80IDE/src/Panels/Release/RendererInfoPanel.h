@@ -1,7 +1,7 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
+#if GBC_ENABLE_STATS
 #include "Panels/Panel.h"
 
 namespace gbc

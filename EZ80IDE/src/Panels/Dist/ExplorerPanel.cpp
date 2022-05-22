@@ -29,6 +29,7 @@ namespace gbc
 			{
 				selectedFilepath = workspaceDirectory.filepath;
 				selectedFilepathIsDirectory = true;
+				selectedFilepathDeleteAllowed = false;
 			}
 
 			if (optionsPopupOpen)
@@ -39,21 +40,24 @@ namespace gbc
 				{
 					if (selectedFilepathIsDirectory)
 					{
-						if (ImGui::MenuItem("New File"))
+						if (ImGui::MenuItem("New File", "Ctrl+N"))
 							ide.NewFile();
-						if (ImGui::MenuItem("New Folder"))
+						if (ImGui::MenuItem("New Folder", "Ctrl+Shift+N"))
 							ide.NewFolder();
-						if (ImGui::MenuItem("Open in Explorer"))
-							FileDialog::OpenFolderInExplorer(selectedFilepath);
 						if (ImGui::MenuItem("Open in Terminal"))
 							FileDialog::OpenFolderInTerminal(selectedFilepath);
+						if (ImGui::MenuItem("Open in File Explorer"))
+							FileDialog::OpenFolderInExplorer(selectedFilepath);
 
 						ImGui::Separator();
 
+						// TODO: emulate cut/copy/paste
 						if (ImGui::MenuItem("Cut", "Ctrl+X"))
 							GBC_INFO("TODO: Directory: Cut");
 						if (ImGui::MenuItem("Copy", "Ctrl+C"))
 							GBC_INFO("TODO: Directory: Copy");
+						// Can only paste file or directory into another directory.
+						// Can't cut into the same directory, nor any of its subdirectories.
 						if (ImGui::MenuItem("Paste", "Ctrl+V"))
 							GBC_INFO("TODO: Directory: Paste");
 					}
@@ -66,59 +70,28 @@ namespace gbc
 
 						ImGui::Separator();
 
+						// TODO: emulate cut/copy/paste
 						if (ImGui::MenuItem("Cut", "Ctrl+X"))
-							GBC_INFO("TODO: Directory: Cut");
+							GBC_INFO("TODO: File: Cut");
 						if (ImGui::MenuItem("Copy", "Ctrl+C"))
-							GBC_INFO("TODO: Directory: Copy");
+							GBC_INFO("TODO: File: Copy");
 					}
 
 					ImGui::Separator();
 
 					if (ImGui::MenuItem("Copy Path", "Shift+C"))
-						Input::SetClipboardString(selectedFilepath.string());
+						ide.CopyPath(selectedFilepath);
 					if (ImGui::MenuItem("Copy Relative Path", "Shift+Alt+C"))
-						Input::SetClipboardString((std::filesystem::relative(selectedFilepath, workspaceDirectory.filepath)).string());
+						ide.CopyRelativePath(selectedFilepath);
 
 					ImGui::Separator();
 
 					if (ImGui::MenuItem("Rename", "Ctrl+R"))
-						renamePopupOpen = true;
-
-					if (selectedFilepathIsDirectory)
-					{
-						if (ImGui::MenuItem("Delete", "Delete", false, optionsDeleteAllowed))
-							ide.DeleteFolder(selectedFilepath);
-					}
-					else
-					{
-						if (ImGui::MenuItem("Delete", "Delete", false, optionsDeleteAllowed))
-							ide.DeleteFilePanel(selectedFilepath);
-					}
+						ide.Rename();
+					if (ImGui::MenuItem("Delete", "Delete", false, selectedFilepathDeleteAllowed))
+						ide.Delete();
 
 					ImGui::EndPopup();
-				}
-			}
-			else if (renamePopupOpen)
-			{
-				ImGuiWindowFlags flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize |
-					ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
-				if (!ide.OpenPopup(renamePopupTitle))
-					optionsPopupOpen = false;
-				else
-				{
-					ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, { 0.5f });
-
-					if (ImGui::BeginPopupModal(renamePopupTitle, nullptr, flags))
-					{
-						ImGui::Text("testing");
-
-						if (selectedFilepathIsDirectory)
-						{
-
-						}
-
-						ImGui::EndPopup();
-					}
 				}
 			}
 		}
@@ -128,7 +101,10 @@ namespace gbc
 	{
 		auto& ide = GetIDE();
 
-		ImGuiTreeNodeFlags directoryFlags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+		ImGuiTreeNodeFlags directoryFlags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow |
+			ImGuiTreeNodeFlags_OpenOnDoubleClick;
+		if (!FileIO::IsAncestorOf(ide.srcDirectory, directory.filepath))
+			directoryFlags |= ImGuiTreeNodeFlags_DefaultOpen;
 		if (directory.subDirectories.empty() && directory.files.empty())
 			directoryFlags |= ImGuiTreeNodeFlags_Leaf;
 		if (selectedFilepath == directory.filepath)
@@ -140,6 +116,7 @@ namespace gbc
 		{
 			selectedFilepath = directory.filepath;
 			selectedFilepathIsDirectory = true;
+			selectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.srcDirectory, selectedFilepath);
 			clickedFile = true;
 		}
 
@@ -147,10 +124,10 @@ namespace gbc
 		{
 			selectedFilepath = directory.filepath;
 			selectedFilepathIsDirectory = true;
+			selectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.srcDirectory, selectedFilepath);
 			clickedFile = true;
 
 			optionsPopupOpen = true;
-			optionsDeleteAllowed = FileIO::IsAncestorOf(ide.srcDirectory, selectedFilepath);
 		}
 
 		if (opened)
@@ -170,6 +147,7 @@ namespace gbc
 				{
 					selectedFilepath = file.filepath;
 					selectedFilepathIsDirectory = false;
+					selectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.srcDirectory, selectedFilepath);
 					clickedFile = true;
 
 					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -180,10 +158,10 @@ namespace gbc
 				{
 					selectedFilepath = file.filepath;
 					selectedFilepathIsDirectory = false;
+					selectedFilepathDeleteAllowed = FileIO::IsAncestorOf(ide.srcDirectory, selectedFilepath);
 					clickedFile = true;
 
 					optionsPopupOpen = true;
-					optionsDeleteAllowed = FileIO::IsAncestorOf(ide.srcDirectory, selectedFilepath);
 				}
 
 				if (opened)

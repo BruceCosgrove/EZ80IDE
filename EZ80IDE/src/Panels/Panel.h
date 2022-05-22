@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
 #include "GBC/Events/Event.h"
 #include <glm/glm.hpp>
 #include <imgui/imgui.h>
@@ -85,4 +84,3 @@ namespace gbc
 		bool positionChanged : 1 = false;
 	};
 }
-#endif

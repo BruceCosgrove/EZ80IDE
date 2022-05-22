@@ -80,12 +80,24 @@ namespace gbc::FileIO
 		return DirectoryExists(filepath) && std::filesystem::is_empty(filepath, error);
 	}
 
+	bool IsNonemptyDirectory(const std::filesystem::path& filepath)
+	{
+		std::error_code error;
+		return DirectoryExists(filepath) && !std::filesystem::is_empty(filepath, error);
+	}
+
 	bool IsAncestorOf(const std::filesystem::path& ancestor, const std::filesystem::path& filepath) noexcept
 	{
 		if (filepath.empty() || ancestor.empty() || filepath.native().size() <= ancestor.native().size()) return false;
 		auto ancestorAbsolute = Absolute(ancestor);
 		auto filepathAbsolute = Absolute(filepath);
 		return filepathAbsolute.native().starts_with(ancestorAbsolute.native());
+	}
+
+	std::filesystem::path Relative(const std::filesystem::path& filepath, const std::filesystem::path& parent)
+	{
+		std::error_code error;
+		return std::filesystem::relative(filepath, parent, error);
 	}
 
 	std::filesystem::path Absolute(const std::filesystem::path& filepath)
@@ -109,6 +121,26 @@ namespace gbc::FileIO
 	{
 		std::error_code error;
 		return DirectoryExists(filepath) || std::filesystem::create_directory(filepath, error);
+	}
+
+	bool RenameFile(const std::filesystem::path& filepathOld, const std::filesystem::path& filepathNew) noexcept
+	{
+		if (!FileExists(filepathOld) || FileExists(filepathNew))
+			return false;
+
+		std::error_code error;
+		std::filesystem::rename(filepathOld, filepathNew, error);
+		return !error;
+	}
+
+	bool RenameDirectory(const std::filesystem::path& filepathOld, const std::filesystem::path& filepathNew) noexcept
+	{
+		if (!DirectoryExists(filepathOld) || IsNonemptyDirectory(filepathNew) || FileExists(filepathNew))
+			return false;
+
+		std::error_code error;
+		std::filesystem::rename(filepathOld, filepathNew, error);
+		return !error;
 	}
 
 	bool Delete(const std::filesystem::path& filepath) noexcept

@@ -27,31 +27,24 @@ namespace gbc
 		static void PrevTableColumn();
 		static void EndTable();
 
-		template<typename... Args> static void Text(const char* format, Args&&... args);
 		template<typename... Args> static void Text(const char* label, const char* format, Args&&... args);
 
-		static bool InputText(char* buffer, size_t size, ImGuiInputTextFlags flags = defaultTextFlags);
 		template<size_t Size> static bool InputText(char(&buffer)[Size], ImGuiInputTextFlags flags = defaultTextFlags);
+		static bool InputText(const char* label, char* buffer, size_t size, ImGuiInputTextFlags flags = defaultTextFlags);
 
-		static bool FloatEdit3(float* values, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
-		static bool FloatEdit3(const char* label, float* values, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
+		static bool DragFloat3(const char* label, float* values, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
 
-		static bool FloatEdit2(float* values, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
-		static bool FloatEdit2(const char* label, float* values, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
+		static bool DragFloat2(const char* label, float* values, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
 
-		static bool FloatEdit(float* value, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
-		static bool FloatEdit(const char* label, float* value, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
+		static bool DragFloat(const char* label, float* value, float speed = defaultSpeed, float minValue = 0.0f, float maxValue = 0.0f);
 
-		static bool Combo(int32_t* selectedItem, const char* const* names, int32_t count);
-		static bool Combo(const char* label, int32_t* selectedItem, const char* const* names, int32_t count);
+		static bool Combo(uint32_t* selectedItem, const char* const* names, uint32_t count);
+		static bool Combo(const char* label, uint32_t* selectedItem, const char* const* names, uint32_t count);
 		
-		static bool Checkbox(bool* value);
 		static bool Checkbox(const char* label, bool* value);
 		
-		static bool ColorEdit3(float* values);
 		static bool ColorEdit3(const char* label, float* values);
 		
-		static bool ColorEdit4(float* values);
 		static bool ColorEdit4(const char* label, float* values);
 		
 		static bool TextEdit(std::string* value);

@@ -1,5 +1,5 @@
 #include "RendererInfoPanel.h"
-#if GBC_ENABLE_IMGUI
+#if GBC_ENABLE_STATS
 #include "GBC/Core/Application.h"
 #include "GBC/ImGui/ImGuiHelper.h"
 

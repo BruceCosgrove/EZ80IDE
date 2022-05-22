@@ -2,6 +2,7 @@
 
 #include "GBC/Core/Core.h"
 #if GBC_ENABLE_IMGUI
+#include "GBC/Events/KeyEvents.h"
 #include "GBC/IO/DirectoryChange.h"
 #include "Panels/Panel.h"
 #include <filesystem>
@@ -17,6 +18,9 @@ namespace gbc
 
 		void SetWorkspaceDirectory(const std::filesystem::path& workspaceDirectoryFilepath);
 
+		const std::filesystem::path& GetSelectedFilepath() const noexcept { return selectedFilepath; }
+		bool IsSelectedFilepathADirectory() const noexcept { return selectedFilepathIsDirectory; }
+		bool IsSelectedFilepathDeleteAllowed() const noexcept { return selectedFilepathDeleteAllowed; }
 		std::filesystem::path GetNewFileDirectory() const;
 	private:
 		struct File
@@ -48,15 +52,14 @@ namespace gbc
 		Directory workspaceDirectory;
 		std::filesystem::path selectedFilepath;
 		bool selectedFilepathIsDirectory = true;
+		bool selectedFilepathDeleteAllowed = false;
 	private:
 		DirectoryChange::Notifier notifier;
 		bool OnDirectoryNotification(bool error);
 	private:
 		static constexpr char optionsPopupTitle[] = "ExplorerOptionsPopup";
 		static constexpr char renamePopupTitle[] = "ExplorerRenamePopup";
-		bool optionsDeleteAllowed = false;
 		bool optionsPopupOpen = false;
-		bool renamePopupOpen = false;
 	};
 }
 #endif

@@ -1,13 +1,6 @@
 namespace gbc
 {
 	template<typename... Args>
-	static void ImGuiHelper::Text(const char* format, Args&&... args)
-	{
-		ImGui::PushItemWidth(-FLT_MIN);
-		ImGui::Text(format, std::forward<Args>(args)...);
-	}
-
-	template<typename... Args>
 	static void ImGuiHelper::Text(const char* label, const char* format, Args&&... args)
 	{
 		ImGui::PushID(label);
@@ -15,7 +8,7 @@ namespace gbc
 		NextTableColumn();
 		ImGui::Text(format, std::forward<Args>(args)...);
 		PrevTableColumn();
-		Text(label);
+		ImGui::Text(label);
 		NextTableColumn();
 
 		ImGui::PopID();
@@ -24,7 +17,7 @@ namespace gbc
 	template<size_t Size>
 	static bool ImGuiHelper::InputText(char(&buffer)[Size], ImGuiInputTextFlags flags)
 	{
-		return InputText(buffer, Size, flags);
+		return ImGui::InputText("", buffer, Size, flags);
 	}
 
 	template<typename... Args>

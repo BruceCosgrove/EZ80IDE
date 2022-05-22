@@ -17,7 +17,7 @@ namespace gbc
 	public:
 		inline virtual const std::string& GetTitle() const override { return windowTitle; }
 		inline const std::filesystem::path& GetFilepath() const noexcept { return filepath; }
-		void SetFilepath(const std::filesystem::path& filepath) noexcept;
+		void Rename(const std::filesystem::path& filepath) noexcept;
 
 		virtual void SetEnabled(bool enabled) noexcept override;
 		virtual void SetFocused(bool focused) noexcept override;
