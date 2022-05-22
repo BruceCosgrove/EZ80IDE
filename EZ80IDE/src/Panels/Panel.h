@@ -15,33 +15,33 @@ namespace gbc
 	public:
 		constexpr Panel() noexcept = default; // Needed to be stored in most stl types.
 		constexpr Panel(EZ80IDELayer* ez80IDELayer, const std::string& title, bool enabled = true)
-			: ez80IDELayer(ez80IDELayer), title(title), enabled(enabled) {}
+			: m_pEZ80IDELayer(ez80IDELayer), m_Title(title), m_Enabled(enabled) {}
 		constexpr virtual ~Panel() = default;
 
 		void OnImGuiRender();
 		constexpr virtual void OnEvent(Event& event) {}
 
-		constexpr const std::string& GetDefaultTitle() const noexcept { return title; }
+		constexpr const std::string& GetDefaultTitle() const noexcept { return m_Title; }
 
-		constexpr bool HasEnabledChanged() const noexcept { return enabledChanged; }
-		constexpr bool IsEnabled() const noexcept { return enabled; }
+		constexpr bool HasEnabledChanged() const noexcept { return m_EnabledChanged; }
+		constexpr bool IsEnabled() const noexcept { return m_Enabled; }
 		virtual void SetEnabled(bool enabled) noexcept;
 		void ToggleEnabled() noexcept { SetEnabled(!IsEnabled()); }
 
-		constexpr bool HasFocusChanged() const noexcept { return focusChanged; }
-		constexpr bool IsFocused() const noexcept { return focused; }
+		constexpr bool HasFocusChanged() const noexcept { return m_FocusChanged; }
+		constexpr bool IsFocused() const noexcept { return m_Focused; }
 		virtual void SetFocused(bool focused) noexcept;
 
-		constexpr bool HasHoverChanged() const noexcept { return hoverChanged; }
-		constexpr bool IsHovered() const noexcept { return hovered; }
+		constexpr bool HasHoverChanged() const noexcept { return m_HoverChanged; }
+		constexpr bool IsHovered() const noexcept { return m_Hovered; }
 		virtual void SetHovered(bool hovered) noexcept;
 
-		constexpr bool HasSizeChanged() const noexcept { return sizeChanged; }
-		constexpr const glm::ivec2& GetSize() const noexcept { return size; }
+		constexpr bool HasSizeChanged() const noexcept { return m_SizeChanged; }
+		constexpr const glm::ivec2& GetSize() const noexcept { return m_Size; }
 		virtual void SetSize(const glm::ivec2& size) noexcept;
 
-		constexpr bool HasPositionChanged() const noexcept { return positionChanged; }
-		constexpr const glm::ivec2& GetPosition() const noexcept { return position; }
+		constexpr bool HasPositionChanged() const noexcept { return m_PositionChanged; }
+		constexpr const glm::ivec2& GetPosition() const noexcept { return m_Position; }
 		virtual void SetPosition(const glm::ivec2& position) noexcept;
 	public:
 		// Make sure the imgui hash of this is always constant.
@@ -62,25 +62,25 @@ namespace gbc
 		constexpr virtual bool ProvideDefaultWindow() const { return true; }
 		constexpr virtual ImGuiWindowFlags GetDefaultWindowFlags() const { return ImGuiWindowFlags_None; }
 
-		constexpr EZ80IDELayer& GetIDE() noexcept { return *ez80IDELayer; }
-		constexpr const EZ80IDELayer& GetIDE() const noexcept { return *ez80IDELayer; }
+		constexpr EZ80IDELayer& GetIDE() noexcept { return *m_pEZ80IDELayer; }
+		constexpr const EZ80IDELayer& GetIDE() const noexcept { return *m_pEZ80IDELayer; }
 
 		// Updates enabled, focused, hovered, position, and size for the active imgui window (call between ImGui::Begin and ImGui::End).
 		void Update(bool enabled);
 	private:
-		EZ80IDELayer* ez80IDELayer = nullptr;
-		std::string title;
-		glm::ivec2 size{ 1 };
-		glm::ivec2 position{ 0 };
+		EZ80IDELayer* m_pEZ80IDELayer = nullptr;
+		std::string m_Title;
+		glm::ivec2 m_Size{ 1 };
+		glm::ivec2 m_Position{ 0 };
 
-		bool enabled : 1 = false;
-		bool focused : 1 = false;
-		bool hovered : 1 = false;
+		bool m_Enabled : 1 = false;
+		bool m_Focused : 1 = false;
+		bool m_Hovered : 1 = false;
 
-		bool enabledChanged : 1 = false;
-		bool focusChanged : 1 = false;
-		bool hoverChanged : 1 = false;
-		bool sizeChanged : 1 = false;
-		bool positionChanged : 1 = false;
+		bool m_EnabledChanged : 1 = false;
+		bool m_FocusChanged : 1 = false;
+		bool m_HoverChanged : 1 = false;
+		bool m_SizeChanged : 1 = false;
+		bool m_PositionChanged : 1 = false;
 	};
 }

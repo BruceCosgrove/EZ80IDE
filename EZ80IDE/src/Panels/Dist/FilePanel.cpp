@@ -1,5 +1,4 @@
 #include "FilePanel.h"
-#if GBC_ENABLE_IMGUI
 #include "Layers/EZ80IDELayer.h"
 #include "GBC/ImGui/ImGuiHelper.h"
 #include <imgui/imgui_internal.h>
@@ -8,7 +7,7 @@
 namespace gbc
 {
 	FilePanel::FilePanel(EZ80IDELayer* ez80IDELayer, const std::filesystem::path& filepath, uint64_t id)
-		: Panel(ez80IDELayer, ez80IDELayer->GetFilePanelTitle(filepath, id), false), filepath(filepath)
+		: Panel(ez80IDELayer, ez80IDELayer->GetFilePanelTitle(filepath, id), false), m_Filepath(filepath)
 	{
 		bool status = FileIO::MakeFileIfNotExists(filepath);
 		GBC_ASSERT(status, "Failed to create file panel file!");
@@ -19,7 +18,7 @@ namespace gbc
 	FilePanel::~FilePanel()
 	{
 		auto& ide = GetIDE();
-		ide.RemoveFilePanel(filepath);
+		ide.RemoveFilePanel(m_Filepath);
 
 		Save();
 		SetEnabled(false);
@@ -32,25 +31,25 @@ namespace gbc
 
 	void FilePanel::UpdateWindowTitle()
 	{
-		windowTitle = filepath.filename().string();
-		asteriskIndex = windowTitle.length();
+		m_WindowTitle = m_Filepath.filename().string();
+		m_AsteriskIndex = m_WindowTitle.length();
 		auto& defaultTitle = GetDefaultTitle();
-		windowTitle.reserve(asteriskIndex + 1 + defaultTitle.length());
-		windowTitle += unsavedChanges ? '*' : ' ';
-		windowTitle += defaultTitle;
+		m_WindowTitle.reserve(m_AsteriskIndex + 1 + defaultTitle.length());
+		m_WindowTitle += m_UnsavedChanges ? '*' : ' ';
+		m_WindowTitle += defaultTitle;
 	}
 
 	void FilePanel::Rename(const std::filesystem::path& filepath) noexcept
 	{
-		if (FileIO::FileExists(this->filepath))
+		if (FileIO::FileExists(this->m_Filepath))
 		{
 			Save();
-			FileIO::RenameFile(this->filepath, filepath);
-			this->filepath = filepath;
+			FileIO::RenameFile(this->m_Filepath, filepath);
+			this->m_Filepath = filepath;
 		}
 		else
 		{
-			this->filepath = filepath;
+			this->m_Filepath = filepath;
 			Save();
 		}
 		UpdateWindowTitle();
@@ -64,13 +63,13 @@ namespace gbc
 			if (enabled)
 			{
 				// If the window is being reopened, reallow it to save its state.
-				if (ImGuiWindow* window = ImGui::FindWindowByName(windowTitle.c_str()))
+				if (ImGuiWindow* window = ImGui::FindWindowByName(m_WindowTitle.c_str()))
 					window->Flags &= ~ImGuiWindowFlags_NoSavedSettings;
 			}
 			else
 			{
 				// Prevent the window from saving its state to new workspace ini files to avoid cross-workspace contamination.
-				if (ImGuiWindow* window = ImGui::FindWindowByName(windowTitle.c_str()))
+				if (ImGuiWindow* window = ImGui::FindWindowByName(m_WindowTitle.c_str()))
 					window->Flags |= ImGuiWindowFlags_NoSavedSettings;
 			}
 		}
@@ -80,26 +79,26 @@ namespace gbc
 	{
 		Panel::SetFocused(focused);
 		if (HasFocusChanged() && focused)
-			ImGui::SetWindowFocus(windowTitle.c_str());
+			ImGui::SetWindowFocus(m_WindowTitle.c_str());
 	}
 
 	void FilePanel::OnChanged()
 	{
-		if (!unsavedChanges)
+		if (!m_UnsavedChanges)
 		{
-			unsavedChanges = true;
-			windowTitle[asteriskIndex] = '*';
+			m_UnsavedChanges = true;
+			m_WindowTitle[m_AsteriskIndex] = '*';
 		}
 	}
 
 	void FilePanel::Save()
 	{
-		if (unsavedChanges)
+		if (m_UnsavedChanges)
 		{
-			unsavedChanges = false;
-			windowTitle[asteriskIndex] = ' ';
+			m_UnsavedChanges = false;
+			m_WindowTitle[m_AsteriskIndex] = ' ';
 
-			//std::ofstream file(filepath);
+			//std::ofstream file(m_Filepath);
 			//if (file.is_open())
 			//{
 			//	// TODO: write data
@@ -109,4 +108,3 @@ namespace gbc
 		}
 	}
 }
-#endif

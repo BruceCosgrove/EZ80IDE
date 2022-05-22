@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
 #include "GBC/Events/KeyEvents.h"
 #include "GBC/IO/DirectoryChange.h"
 #include "Panels/Panel.h"
@@ -18,9 +17,9 @@ namespace gbc
 
 		void SetWorkspaceDirectory(const std::filesystem::path& workspaceDirectoryFilepath);
 
-		const std::filesystem::path& GetSelectedFilepath() const noexcept { return selectedFilepath; }
-		bool IsSelectedFilepathADirectory() const noexcept { return selectedFilepathIsDirectory; }
-		bool IsSelectedFilepathDeleteAllowed() const noexcept { return selectedFilepathDeleteAllowed; }
+		const std::filesystem::path& GetSelectedFilepath() const noexcept { return m_SelectedFilepath; }
+		bool IsSelectedFilepathADirectory() const noexcept { return m_SelectedFilepathIsDirectory; }
+		bool IsSelectedFilepathDeleteAllowed() const noexcept { return m_SelectedFilepathDeleteAllowed; }
 		std::filesystem::path GetNewFileDirectory() const;
 	private:
 		struct File
@@ -47,19 +46,18 @@ namespace gbc
 	private:
 		void RefreshDirectories();
 		void RefreshDirectory(Directory& directory);
-		bool refreshDirectories = false;
+		bool m_RefreshDirectories = false;
 
-		Directory workspaceDirectory;
-		std::filesystem::path selectedFilepath;
-		bool selectedFilepathIsDirectory = true;
-		bool selectedFilepathDeleteAllowed = false;
+		Directory m_WorkspaceDirectory;
+		std::filesystem::path m_SelectedFilepath;
+		bool m_SelectedFilepathIsDirectory = true;
+		bool m_SelectedFilepathDeleteAllowed = false;
 	private:
-		DirectoryChange::Notifier notifier;
+		DirectoryChange::Notifier m_Notifier;
 		bool OnDirectoryNotification(bool error);
 	private:
-		static constexpr char optionsPopupTitle[] = "ExplorerOptionsPopup";
-		static constexpr char renamePopupTitle[] = "ExplorerRenamePopup";
-		bool optionsPopupOpen = false;
+		static constexpr char s_pOptionsPopupTitle[] = "ExplorerOptionsPopup";
+		static constexpr char s_pRenamePopupTitle[] = "ExplorerRenamePopup";
+		bool m_OptionsPopupOpen = false;
 	};
 }
-#endif

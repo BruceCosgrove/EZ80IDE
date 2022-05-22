@@ -48,7 +48,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		AddPanel<RendererInfoPanel>("Renderer Info")->SetEnabled(false);
 #endif
 
-		explorerPanel = AddPanel<ExplorerPanel>("Explorer");
+		m_pExplorerPanel = AddPanel<ExplorerPanel>("Explorer");
 	}
 
 	void EZ80IDELayer::OnDetach()
@@ -68,11 +68,11 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		// TODO: Set this depending on state.
 		//Application::Get().GetImGuiWrapper().SetBlockEvents(!sceneViewportPanel->IsFocused() && !sceneViewportPanel->IsHovered());
 
-		panels.UpdateOrder();
-		SetStates(IDEState_ExplorerFocused, explorerPanel->IsFocused());
+		m_Panels.UpdateOrder();
+		SetStates(IDEState_ExplorerFocused, m_pExplorerPanel->IsFocused());
 
-		filePanels.UpdateOrder();
-		SetStates(IDEState_FileFocused, filePanels.HasFocusedPanel());
+		m_FilePanels.UpdateOrder();
+		SetStates(IDEState_FileFocused, m_FilePanels.HasFocusedPanel());
 	}
 
 	void EZ80IDELayer::OnRender()
@@ -89,13 +89,13 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 		UI_Dockspace();
 
-		for (auto panel : panels)
+		for (auto panel : m_Panels)
 			panel->OnImGuiRender();
-		for (auto filePanel : filePanels)
+		for (auto filePanel : m_FilePanels)
 			filePanel->OnImGuiRender();
 
-		if (openPopup)
-			(this->*openPopup)();
+		if (m_pOpenPopup)
+			(this->*m_pOpenPopup)();
 
 		ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
 		ImGui::SetNextWindowPos(ImVec2(2360, 0), ImGuiCond_FirstUseEver);
@@ -115,9 +115,9 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			} \
 			ImGuiHelper::EndTable();
 
-			DEBUG_DRAW_PANEL_STACK("File Panels", filePanels);
+			DEBUG_DRAW_PANEL_STACK("File Panels", m_FilePanels);
 			ImGui::NewLine();
-			DEBUG_DRAW_PANEL_STACK("Other Panels", panels);
+			DEBUG_DRAW_PANEL_STACK("Other Panels", m_Panels);
 #undef DEBUG_DRAW_PANEL_STACK
 			ImGui::End();
 		}
@@ -126,7 +126,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		ImGui::SetNextWindowPos(ImVec2(2760, 0), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin("State Debug", nullptr, ImGuiWindowFlags_NoSavedSettings))
 		{
-#define DEBUG_DRAW_STATE(x) ImGui::Text(#x "=%d", !!(state & IDEState_##x))
+#define DEBUG_DRAW_STATE(x) ImGui::Text(#x "=%d", !!(m_State & IDEState_##x))
 			ImGui::Text("Generic");
 			ImGui::Indent();
 			DEBUG_DRAW_STATE(WorkspaceOpen);
@@ -204,7 +204,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				if (ImGui::BeginMenu("Panels"))
 				{
-					for (auto panel : panels)
+					for (auto panel : m_Panels)
 						if (ImGui::MenuItem(panel->GetTitle().c_str(), nullptr, panel->IsEnabled()))
 							panel->ToggleEnabled();
 					ImGui::EndMenu();
@@ -241,13 +241,13 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				if (secondFrame)
 					ImGui::SetKeyboardFocusHere();
-				ImGuiHelper::Text("Directory", newFileInitialDirectoryString.c_str());
+				ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
 				ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::InputText("Name", newFilenameBuffer, sizeof(newFilenameBuffer) / sizeof(*newFilenameBuffer));
+				(void)ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
 				ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::Combo("Extension", &newFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
+				(void)ImGuiHelper::Combo("Extension", &m_NewFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
 
 				ImGuiHelper::EndTable();
 			}
@@ -258,7 +258,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			if (ImGui::Button("Create", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
 			{
 				closed = true;
-				create = !!*newFilenameBuffer;
+				create = !!*m_NewFilenameBuffer;
 			}
 
 			ImGui::SameLine();
@@ -272,7 +272,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				ImGui::CloseCurrentPopup();
 				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
-				openPopup = nullptr;
+				m_pOpenPopup = nullptr;
 				firstFrame = true;
 				secondFrame = false;
 			}
@@ -286,12 +286,12 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			if (create)
 			{
-				newFileSelectedExtension = newFilePendingExtension;
+				m_NewFileSelectedExtension = m_NewFilePendingExtension;
 
-				std::filesystem::path filepath = workspaceDirectory;
-				filepath /= newFileInitialDirectory;
-				filepath /= (char*)newFilenameBuffer;
-				filepath.replace_extension(extensions[newFileSelectedExtension]);
+				std::filesystem::path filepath = m_WorkspaceDirectory;
+				filepath /= m_NewFileInitialDirectory;
+				filepath /= (char*)m_NewFilenameBuffer;
+				filepath.replace_extension(extensions[m_NewFileSelectedExtension]);
 				FocusOrAddFilePanel(filepath);
 			}
 
@@ -323,10 +323,10 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				if (secondFrame)
 					ImGui::SetKeyboardFocusHere();
-				ImGuiHelper::Text("Directory", newFileInitialDirectoryString.c_str());
+				ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
 				ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::InputText("Name", newFilenameBuffer, sizeof(newFilenameBuffer) / sizeof(*newFilenameBuffer));
+				(void)ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
 
 				ImGuiHelper::EndTable();
 			}
@@ -337,7 +337,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			if (ImGui::Button("Create", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
 			{
 				closed = true;
-				create = !!*newFilenameBuffer;
+				create = !!*m_NewFilenameBuffer;
 			}
 
 			ImGui::SameLine();
@@ -351,7 +351,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				ImGui::CloseCurrentPopup();
 				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
-				openPopup = nullptr;
+				m_pOpenPopup = nullptr;
 				firstFrame = true;
 				secondFrame = false;
 			}
@@ -365,9 +365,9 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			if (create)
 			{
-				std::filesystem::path filepath = workspaceDirectory;
-				filepath /= newFileInitialDirectory;
-				filepath /= (char*)newFilenameBuffer;
+				std::filesystem::path filepath = m_WorkspaceDirectory;
+				filepath /= m_NewFileInitialDirectory;
+				filepath /= (char*)m_NewFilenameBuffer;
 				bool status = FileIO::MakeDirectoryIfNotExists(filepath);
 				GBC_ASSERT(status, "Failed to create new directory.");
 			}
@@ -381,7 +381,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 	{
 		static constexpr char titleFile[] = "Rename File";
 		static constexpr char titleFolder[] = "Rename Folder";
-		const char* title = renamingFolder ? titleFolder : titleFile;
+		const char* title = m_RenamingFolder ? titleFolder : titleFile;
 
 		static constexpr ImGuiPopupFlags popupFlags = ImGuiPopupFlags_NoOpenOverExistingPopup;
 		static constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
@@ -404,15 +404,15 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				if (secondFrame)
 					ImGui::SetKeyboardFocusHere();
-				ImGuiHelper::Text("Directory", newFileInitialDirectoryString.c_str());
+				ImGuiHelper::Text("Directory", m_NewFileInitialDirectoryString.c_str());
 				ImGuiHelper::NextTableColumn();
 
-				(void)ImGuiHelper::InputText("Name", newFilenameBuffer, sizeof(newFilenameBuffer) / sizeof(*newFilenameBuffer));
+				(void)ImGuiHelper::InputText("Name", m_NewFilenameBuffer, sizeof(m_NewFilenameBuffer) / sizeof(*m_NewFilenameBuffer));
 
-				if (!renamingFolder)
+				if (!m_RenamingFolder)
 				{
 					ImGuiHelper::NextTableColumn();
-					(void)ImGuiHelper::Combo("Extension", &newFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
+					(void)ImGuiHelper::Combo("Extension", &m_NewFilePendingExtension, extensions, sizeof(extensions) / sizeof(*extensions));
 				}
 
 				ImGuiHelper::EndTable();
@@ -424,7 +424,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			if (ImGui::Button("Rename", buttonSize) || Input::IsKeyPressed(Keycode::Enter))
 			{
 				closed = true;
-				rename = !!*newFilenameBuffer; // rename if newFilenameBuffer is not empty
+				rename = !!*m_NewFilenameBuffer; // rename if m_NewFilenameBuffer is not empty
 			}
 
 			ImGui::SameLine();
@@ -438,7 +438,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				ImGui::CloseCurrentPopup();
 				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
-				openPopup = nullptr;
+				m_pOpenPopup = nullptr;
 				firstFrame = true;
 				secondFrame = false;
 			}
@@ -452,16 +452,16 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 			if (rename)
 			{
-				auto filepathNew = workspaceDirectory / newFileInitialDirectory;
-				filepathNew /= (char*)newFilenameBuffer;
+				auto filepathNew = m_WorkspaceDirectory / m_NewFileInitialDirectory;
+				filepathNew /= (char*)m_NewFilenameBuffer;
 
-				if (renamingFolder)
+				if (m_RenamingFolder)
 				{
-					auto filepathOld = workspaceDirectory / newFileInitialDirectory;
+					auto filepathOld = m_WorkspaceDirectory / m_NewFileInitialDirectory;
 					bool status = FileIO::RenameDirectory(filepathOld, filepathNew);
 					GBC_ASSERT(status, "Failed to rename directory.");
 
-					for (auto panel : filePanels)
+					for (auto panel : m_FilePanels)
 					{
 						FilePanel* filePanel = (FilePanel*)panel;
 						if (FileIO::IsAncestorOf(filepathOld, filePanel->GetFilepath()))
@@ -473,14 +473,14 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				}
 				else
 				{
-					newFileSelectedExtension = newFilePendingExtension;
-					filepathNew.replace_extension(extensions[newFileSelectedExtension]);
+					m_NewFileSelectedExtension = m_NewFilePendingExtension;
+					filepathNew.replace_extension(extensions[m_NewFileSelectedExtension]);
 
-					if (renamingOpenFile)
-						RenameFilePanel(((FilePanel*)filePanels.Peek())->GetFilepath(), filepathNew);
+					if (m_RenamingOpenFile)
+						RenameFilePanel(((FilePanel*)m_FilePanels.Peek())->GetFilepath(), filepathNew);
 					else
 					{
-						bool status = FileIO::RenameFile(explorerPanel->GetSelectedFilepath(), filepathNew);
+						bool status = FileIO::RenameFile(m_pExplorerPanel->GetSelectedFilepath(), filepathNew);
 						GBC_ASSERT(status, "Failed to rename file.");
 					}
 				}
@@ -495,7 +495,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 	{
 		static constexpr char titleFile[] = "Delete File";
 		static constexpr char titleFolder[] = "Delete Folder";
-		const char* title = deletingFolder ? titleFolder : titleFile;
+		const char* title = m_DeletingFolder ? titleFolder : titleFile;
 
 		static constexpr ImGuiPopupFlags popupFlags = ImGuiPopupFlags_NoOpenOverExistingPopup;
 		static constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
@@ -511,7 +511,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowTitleAlign, ImVec2{ 0.5f, ImGui::GetStyle().WindowTitleAlign.y });
 		if (ImGui::BeginPopupModal(title, nullptr, windowFlags))
 		{
-			ImGui::Text("Are you sure you want to delete:\n%s?", deletingMessage.c_str());
+			ImGui::Text("Are you sure you want to delete:\n%s?", m_DeletingMessage.c_str());
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { style.ItemSpacing.x * 0.5f, style.ItemSpacing.y });
 			ImVec2 buttonSize{ (ImGui::GetContentRegionAvail().x - style.FramePadding.x) * 0.5f, 0.0f };
@@ -533,15 +533,15 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			{
 				ImGui::CloseCurrentPopup();
 				RemoveStates(IDEState_PopupOpen | IDEState_ModalPopup);
-				openPopup = nullptr;
+				m_pOpenPopup = nullptr;
 			}
 
 			if (delet3)
 			{
-				if (explorerPanel->IsSelectedFilepathADirectory())
-					DeleteFolder(explorerPanel->GetSelectedFilepath());
+				if (m_pExplorerPanel->IsSelectedFilepathADirectory())
+					DeleteFolder(m_pExplorerPanel->GetSelectedFilepath());
 				else
-					DeleteFilePanel(explorerPanel->GetSelectedFilepath());
+					DeleteFilePanel(m_pExplorerPanel->GetSelectedFilepath());
 			}
 
 			ImGui::EndPopup();
@@ -554,10 +554,10 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		EventDispatcher dispatcher(event);
 		dispatcher.Dispatch(this, &EZ80IDELayer::OnWindowCloseEvent);
 		dispatcher.Dispatch(this, &EZ80IDELayer::OnKeyPressEvent);
-		if (!filePanels.HasFocusedPanel())
-			dispatcher.Dispatch(&panels, &PanelStack::OnEvent);
-		if (!panels.HasFocusedPanel())
-			dispatcher.Dispatch(&filePanels, &PanelStack::OnEvent);
+		if (!m_FilePanels.HasFocusedPanel())
+			dispatcher.Dispatch(&m_Panels, &PanelStack::OnEvent);
+		if (!m_Panels.HasFocusedPanel())
+			dispatcher.Dispatch(&m_FilePanels, &PanelStack::OnEvent);
 	}
 
 	void EZ80IDELayer::OnWindowCloseEvent(WindowCloseEvent& event)
@@ -593,13 +593,13 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			switch (keycode)
 			{
 			case Keycode::Delete:
-				if (mods.Are(Mods_None) && explorerPanel->IsSelectedFilepathDeleteAllowed())
+				if (mods.Are(Mods_None) && m_pExplorerPanel->IsSelectedFilepathDeleteAllowed())
 					Delete();
 			case Keycode::C:
 				if (mods.Are(Mods_Shift))
-					CopyPath(explorerPanel->GetSelectedFilepath());
+					CopyPath(m_pExplorerPanel->GetSelectedFilepath());
 				if (mods.Are(Mods_Shift | Mods_Alt))
-					CopyRelativePath(explorerPanel->GetSelectedFilepath());
+					CopyRelativePath(m_pExplorerPanel->GetSelectedFilepath());
 				break;
 			}
 		}
@@ -639,8 +639,8 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	const std::string& EZ80IDELayer::GetFilePanelTitle(const std::filesystem::path& filepath, uint64_t id)
 	{
-		auto it = titleIDs.find(filepath);
-		if (it != titleIDs.end())
+		auto it = m_TitleIDs.find(filepath);
+		if (it != m_TitleIDs.end())
 			return it->second;
 
 		// Get the true id.
@@ -648,30 +648,30 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		if (id)
 		{
 			titleID = id;
-			if (id > nextTitleID)
-				nextTitleID = id;
+			if (id > m_NextTitleID)
+				m_NextTitleID = id;
 		}
 		else
-			titleID = ++nextTitleID;
+			titleID = ++m_NextTitleID;
 
-		auto& titleIDString = titleIDs[filepath];
+		auto& titleIDString = m_TitleIDs[filepath];
 		util::IToS(titleID, titleIDString, 36);
-		titleIDString.insert(0, FilePanel::identifier);
+		titleIDString.insert(0, FilePanel::s_Identifier);
 		return titleIDString;
 	}
 
 	void EZ80IDELayer::RenameFilePanel(const std::filesystem::path& filepathOld, const std::filesystem::path& filepathNew)
 	{
-		auto it = titleIDs.find(filepathOld);
-		if (it != titleIDs.end())
+		auto it = m_TitleIDs.find(filepathOld);
+		if (it != m_TitleIDs.end())
 		{
 			// Remove the previous entry before adding the new
 			// one because that could invalidate the former.
 			std::string titleIDString = std::move(it->second);
-			titleIDs.erase(it);
-			titleIDs[filepathNew] = std::move(titleIDString);
+			m_TitleIDs.erase(it);
+			m_TitleIDs[filepathNew] = std::move(titleIDString);
 
-			for (auto panel : filePanels)
+			for (auto panel : m_FilePanels)
 			{
 				FilePanel* filePanel = (FilePanel*)panel;
 				if (filePanel->GetFilepath() == filepathOld)
@@ -685,26 +685,26 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	void EZ80IDELayer::RemoveFilePanel(const std::filesystem::path& filepath)
 	{
-		auto it = titleIDs.find(filepath);
-		if (it != titleIDs.end())
-			titleIDs.erase(it);
+		auto it = m_TitleIDs.find(filepath);
+		if (it != m_TitleIDs.end())
+			m_TitleIDs.erase(it);
 	}
 
 	void EZ80IDELayer::DeleteFilePanel(const std::filesystem::path& filepath)
 	{
-		if (FileIO::IsAncestorOf(srcDirectory, filepath) && FileIO::FileExists(filepath))
+		if (FileIO::IsAncestorOf(m_SrcDirectory, filepath) && FileIO::FileExists(filepath))
 		{
-			auto it = titleIDs.find(filepath);
-			if (it != titleIDs.end())
+			auto it = m_TitleIDs.find(filepath);
+			if (it != m_TitleIDs.end())
 			{
-				titleIDs.erase(it);
+				m_TitleIDs.erase(it);
 
-				for (auto it = filePanels.begin(); it != filePanels.end(); ++it)
+				for (auto it = m_FilePanels.begin(); it != m_FilePanels.end(); ++it)
 				{
 					FilePanel* filePanel = (FilePanel*)(*it);
 					if (filePanel->GetFilepath() == filepath)
 					{
-						filePanels.Remove(it - filePanels.begin());
+						m_FilePanels.Remove(it - m_FilePanels.begin());
 						break;
 					}
 				}
@@ -716,20 +716,20 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	void EZ80IDELayer::DeleteFolder(const std::filesystem::path& filepath)
 	{
-		if (FileIO::IsAncestorOf(srcDirectory, filepath) && FileIO::DirectoryExists(filepath))
+		if (FileIO::IsAncestorOf(m_SrcDirectory, filepath) && FileIO::DirectoryExists(filepath))
 		{
 			if (FileIO::IsEmptyDirectory(filepath))
 				FileIO::Delete(filepath);
 			else
 			{
-				for (size_t i = 0; i < filePanels.Size();)
+				for (size_t i = 0; i < m_FilePanels.Size();)
 				{
-					FilePanel* filePanel = (FilePanel*)filePanels[i];
+					FilePanel* filePanel = (FilePanel*)m_FilePanels[i];
 					auto& filePanelFilepath = filePanel->GetFilepath();
 					if (FileIO::IsAncestorOf(filepath, filePanelFilepath))
 					{
-						titleIDs.erase(filePanelFilepath);
-						filePanels.Remove(i);
+						m_TitleIDs.erase(filePanelFilepath);
+						m_FilePanels.Remove(i);
 					}
 					else
 						i++;
@@ -742,16 +742,16 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	bool EZ80IDELayer::FocusFilePanel(const std::filesystem::path& filepath)
 	{
-		auto it = titleIDs.find(filepath);
-		if (it == titleIDs.end())
+		auto it = m_TitleIDs.find(filepath);
+		if (it == m_TitleIDs.end())
 			return false;
 
-		for (auto it = filePanels.begin(); it != filePanels.end(); ++it)
+		for (auto it = m_FilePanels.begin(); it != m_FilePanels.end(); ++it)
 		{
 			FilePanel* filePanel = (FilePanel*)(*it);
 			if (filePanel->GetFilepath() == filepath)
 			{
-				filePanels.Focus(it - filePanels.begin());
+				m_FilePanels.Focus(it - m_FilePanels.begin());
 				if (filePanel->HasEnabledChanged())
 					AddStates(IDEState_FileOpen);
 				return true;
@@ -811,7 +811,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 		// TODO: set position, size, docking
 		FilePanel* panel = new FilePanel(this, filepath, id);
-		filePanels.Push(panel);
+		m_FilePanels.Push(panel);
 		return panel;
 	}
 
@@ -822,16 +822,16 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			GBC_INFO("New File");
 
 			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
-			openPopup = &EZ80IDELayer::UI_Popup_NewFile;
+			m_pOpenPopup = &EZ80IDELayer::UI_Popup_NewFile;
 
-			newFilePendingExtension = newFileSelectedExtension;
-			memset(&newFilenameBuffer, 0, sizeof(newFilenameBuffer));
+			m_NewFilePendingExtension = m_NewFileSelectedExtension;
+			memset(&m_NewFilenameBuffer, 0, sizeof(m_NewFilenameBuffer));
 
-			newFileInitialDirectory = FileIO::Relative(explorerPanel->GetNewFileDirectory(), workspaceDirectory);
-			newFileInitialDirectoryString = newFileInitialDirectory.string();
-			newFileInitialDirectoryString.insert(0, 1, '.');
-			newFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
-			newFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
+			m_NewFileInitialDirectory = FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
+			m_NewFileInitialDirectoryString = m_NewFileInitialDirectory.string();
+			m_NewFileInitialDirectoryString.insert(0, 1, '.');
+			m_NewFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
+			m_NewFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
 		}
 	}
 
@@ -842,16 +842,16 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			GBC_INFO("New Folder");
 
 			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
-			openPopup = &EZ80IDELayer::UI_Popup_NewFolder;
+			m_pOpenPopup = &EZ80IDELayer::UI_Popup_NewFolder;
 
-			newFilePendingExtension = newFileSelectedExtension;
-			memset(&newFilenameBuffer, 0, sizeof(newFilenameBuffer));
+			m_NewFilePendingExtension = m_NewFileSelectedExtension;
+			memset(&m_NewFilenameBuffer, 0, sizeof(m_NewFilenameBuffer));
 
-			newFileInitialDirectory = FileIO::Relative(explorerPanel->GetNewFileDirectory(), workspaceDirectory);
-			newFileInitialDirectoryString = newFileInitialDirectory.string();
-			newFileInitialDirectoryString.insert(0, 1, '.');
-			newFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
-			newFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
+			m_NewFileInitialDirectory = FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
+			m_NewFileInitialDirectoryString = m_NewFileInitialDirectory.string();
+			m_NewFileInitialDirectoryString.insert(0, 1, '.');
+			m_NewFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
+			m_NewFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
 		}
 	}
 
@@ -872,14 +872,14 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 	{
 		GBC_INFO("Save File");
 
-		((FilePanel*)filePanels.Peek())->Save();
+		((FilePanel*)m_FilePanels.Peek())->Save();
 	}
 
 	void EZ80IDELayer::SaveAll()
 	{
 		GBC_INFO("Save All");
 
-		for (auto panel : filePanels)
+		for (auto panel : m_FilePanels)
 			if (panel->IsEnabled())
 				((FilePanel*)panel)->Save();
 	}
@@ -890,23 +890,23 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		{
 			std::filesystem::path filename;
 			std::wstring_view extension;
-			if (explorerPanel->IsFocused())
+			if (m_pExplorerPanel->IsFocused())
 			{
-				filename = explorerPanel->GetSelectedFilepath().filename();
+				filename = m_pExplorerPanel->GetSelectedFilepath().filename();
 				extension = std::filesystem::_Parse_extension(filename.native());
-				newFileInitialDirectory = FileIO::Relative(explorerPanel->GetNewFileDirectory(), workspaceDirectory);
-				renamingFolder = extension.empty();
-				if (renamingFolder)
-					newFileInitialDirectory = newFileInitialDirectory.parent_path();
-				else if (!filePanels.Empty())
+				m_NewFileInitialDirectory = FileIO::Relative(m_pExplorerPanel->GetNewFileDirectory(), m_WorkspaceDirectory);
+				m_RenamingFolder = extension.empty();
+				if (m_RenamingFolder)
+					m_NewFileInitialDirectory = m_NewFileInitialDirectory.parent_path();
+				else if (!m_FilePanels.Empty())
 				{
-					renamingOpenFile = false;
-					for (auto panel : filePanels)
+					m_RenamingOpenFile = false;
+					for (auto panel : m_FilePanels)
 					{
 						FilePanel* filePanel = (FilePanel*)panel;
-						if (filePanel->GetFilepath() == explorerPanel->GetSelectedFilepath())
+						if (filePanel->GetFilepath() == m_pExplorerPanel->GetSelectedFilepath())
 						{
-							renamingOpenFile = true;
+							m_RenamingOpenFile = true;
 							break;
 						}
 					}
@@ -914,13 +914,13 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			}
 			else if (HasSubStates(IDEState_FileOpen))
 			{
-				renamingOpenFile = true;
-				renamingFolder = false;
+				m_RenamingOpenFile = true;
+				m_RenamingFolder = false;
 
-				FilePanel* filePanel = (FilePanel*)filePanels.Peek();
+				FilePanel* filePanel = (FilePanel*)m_FilePanels.Peek();
 				filename = filePanel->GetFilepath().filename();
 				extension = std::filesystem::_Parse_extension(filename.native());
-				newFileInitialDirectory = FileIO::Relative(filePanel->GetFilepath(), workspaceDirectory).parent_path();
+				m_NewFileInitialDirectory = FileIO::Relative(filePanel->GetFilepath(), m_WorkspaceDirectory).parent_path();
 			}
 			else // Nothing to rename.
 				return;
@@ -928,29 +928,29 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			GBC_INFO("Rename");
 
 			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
-			openPopup = &EZ80IDELayer::UI_Popup_Rename;
+			m_pOpenPopup = &EZ80IDELayer::UI_Popup_Rename;
 
 			std::string filenameString;
-			if (renamingFolder)
+			if (m_RenamingFolder)
 				filenameString = filename.string();
 			else
 			{
 				filenameString = filename.replace_extension().string();
 				extension = extension.substr(1);
 
-				newFilePendingExtension = 0;
+				m_NewFilePendingExtension = 0;
 				if (extension == L"inc")
-					newFilePendingExtension = 1;
+					m_NewFilePendingExtension = 1;
 				else if (extension == L"asm")
-					newFilePendingExtension = 2;
+					m_NewFilePendingExtension = 2;
 			}
 
-			strcpy_s(newFilenameBuffer, filenameString.length() + 1, filenameString.c_str());
+			strcpy_s(m_NewFilenameBuffer, filenameString.length() + 1, filenameString.c_str());
 
-			newFileInitialDirectoryString = newFileInitialDirectory.string();
-			newFileInitialDirectoryString.insert(0, 1, '.');
-			newFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
-			newFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
+			m_NewFileInitialDirectoryString = m_NewFileInitialDirectory.string();
+			m_NewFileInitialDirectoryString.insert(0, 1, '.');
+			m_NewFileInitialDirectoryString.insert(1, 1, static_cast<char>(std::filesystem::path::preferred_separator));
+			m_NewFileInitialDirectoryString += static_cast<char>(std::filesystem::path::preferred_separator);
 		}
 	}
 
@@ -961,12 +961,12 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			GBC_INFO("Delete");
 
 			AddStates(IDEState_PopupOpen | IDEState_ModalPopup);
-			openPopup = &EZ80IDELayer::UI_Popup_ConfirmDelete;
+			m_pOpenPopup = &EZ80IDELayer::UI_Popup_ConfirmDelete;
 
-			deletingFolder = explorerPanel->IsSelectedFilepathADirectory();
-			deletingMessage = explorerPanel->GetSelectedFilepath().filename().string();
-			if (deletingFolder && !FileIO::IsEmptyDirectory(explorerPanel->GetSelectedFilepath()))
-				deletingMessage += " and all its contents";
+			m_DeletingFolder = m_pExplorerPanel->IsSelectedFilepathADirectory();
+			m_DeletingMessage = m_pExplorerPanel->GetSelectedFilepath().filename().string();
+			if (m_DeletingFolder && !FileIO::IsEmptyDirectory(m_pExplorerPanel->GetSelectedFilepath()))
+				m_DeletingMessage += " and all its contents";
 		}
 	}
 
@@ -976,11 +976,11 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 		// TODO: close with or without saving dialog
 		// check box for save my answer, use it every time this happens, and do not show this again + change later in settings
-		//((FilePanel*)filePanels.Peek())->MarkForCloseWithoutSaving();
+		//((FilePanel*)m_FilePanels.Peek())->MarkForCloseWithoutSaving();
 
-		filePanels.Close();
+		m_FilePanels.Close();
 
-		if (filePanels.GetOpenPanelCount() <= 1) // off by one
+		if (m_FilePanels.GetOpenPanelCount() <= 1) // off by one
 			RemoveStates(IDEState_FileOpen);
 	}
 
@@ -1001,7 +1001,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	void EZ80IDELayer::CopyRelativePath(const std::filesystem::path& filepath)
 	{
-		Input::SetClipboardString(FileIO::Relative(filepath, workspaceDirectory).string());
+		Input::SetClipboardString(FileIO::Relative(filepath, m_WorkspaceDirectory).string());
 	}
 
 	void EZ80IDELayer::SaveAndCloseWorkspace()
@@ -1009,23 +1009,23 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		if (HasSubStates(IDEState_WorkspaceOpen))
 		{
 			// Remove all closed panels so they aren't written to the title ids file.
-			filePanels.RemoveClosedPanels();
+			m_FilePanels.RemoveClosedPanels();
 
 			// Save title IDs.
-			std::ofstream titleIDsFile(titleIDsFilepath);
+			std::ofstream titleIDsFile(m_TitleIDsFilepath);
 			if (titleIDsFile.is_open())
 			{
-				for (auto& [filepath, id] : titleIDs)
+				for (auto& [filepath, id] : m_TitleIDs)
 				{
 					auto filepathString = filepath.string();
 					titleIDsFile.write(filepathString.c_str(), filepathString.length());
 					titleIDsFile.put('\n');
-					titleIDsFile.write(id.c_str() + FilePanel::identifierLength, id.length() - FilePanel::identifierLength);
+					titleIDsFile.write(id.c_str() + FilePanel::m_IdentifierLength, id.length() - FilePanel::m_IdentifierLength);
 					titleIDsFile.put('\n');
 				}
 
-				titleIDs.clear();
-				nextTitleID = 0;
+				m_TitleIDs.clear();
+				m_NextTitleID = 0;
 
 				titleIDsFile.close();
 			}
@@ -1033,11 +1033,11 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				GBC_ASSERT(false, "Couldn't save title ids!");
 
 			// Save the old workspace imgui ini.
-			ImGui::SaveIniSettingsToDisk(imguiIniFilepathString.c_str());
+			ImGui::SaveIniSettingsToDisk(m_ImguiIniFilepathString.c_str());
 
 			// Save all unsaved files, delete all file panels,
 			// and make all file imgui windows not persist to next workspace ini.
-			filePanels.Clear();
+			m_FilePanels.Clear();
 		}
 	}
 
@@ -1049,37 +1049,37 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		{
 			SetState(IDEState_None);
 
-			this->workspaceDirectory.clear();
-			metaDataDirectory.clear();
-			imguiIniFilepathString.clear();
-			srcDirectory.clear();
-			binDirectory.clear();
-			titleIDsFilepath.clear();
+			m_WorkspaceDirectory.clear();
+			m_MetaDataDirectory.clear();
+			m_ImguiIniFilepathString.clear();
+			m_SrcDirectory.clear();
+			m_BinDirectory.clear();
+			m_TitleIDsFilepath.clear();
 		}
 		else
 		{
 			AddStates(IDEState_WorkspaceOpen);
 
 			// Update workspace to new directory.
-			this->workspaceDirectory = FileIO::Absolute(workspaceDirectory);
+			m_WorkspaceDirectory = FileIO::Absolute(workspaceDirectory);
 
-			srcDirectory = workspaceDirectory / L"src";
-			FileIO::MakeDirectoryIfNotExists(srcDirectory);
-			binDirectory = workspaceDirectory / L"bin";
-			FileIO::MakeDirectoryIfNotExists(binDirectory);
+			m_SrcDirectory = workspaceDirectory / L"src";
+			FileIO::MakeDirectoryIfNotExists(m_SrcDirectory);
+			m_BinDirectory = workspaceDirectory / L"bin";
+			FileIO::MakeDirectoryIfNotExists(m_BinDirectory);
 
-			metaDataDirectory = workspaceDirectory / L".ez80ide";
-			FileIO::MakeHiddenDirectory(metaDataDirectory);
+			m_MetaDataDirectory = workspaceDirectory / L".ez80ide";
+			FileIO::MakeHiddenDirectory(m_MetaDataDirectory);
 
-			std::filesystem::path imguiIniFilepath = metaDataDirectory / L"imgui.ini";
-			imguiIniFilepathString = imguiIniFilepath.string();
+			std::filesystem::path imguiIniFilepath = m_MetaDataDirectory / L"imgui.ini";
+			m_ImguiIniFilepathString = imguiIniFilepath.string();
 			if (FileIO::FileExists(imguiIniFilepath))
-				ImGui::LoadIniSettingsFromDisk(imguiIniFilepathString.c_str());
+				ImGui::LoadIniSettingsFromDisk(m_ImguiIniFilepathString.c_str());
 
-			titleIDsFilepath = metaDataDirectory / L"title_ids.ini";
-			if (FileIO::FileExists(titleIDsFilepath))
+			m_TitleIDsFilepath = m_MetaDataDirectory / L"title_ids.ini";
+			if (FileIO::FileExists(m_TitleIDsFilepath))
 			{
-				std::string titleIDFile = FileIO::ReadFile(titleIDsFilepath);
+				std::string titleIDFile = FileIO::ReadFile(m_TitleIDsFilepath);
 
 				size_t filepathStart = 0;
 				do
@@ -1102,12 +1102,12 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 					// I would move titleIDFilepath here, but std::filesystem::path has the default
 					// move constructor, not anything that actually MOVEs the filepath's memory.
-					titleIDs[titleIDFilepath] = filePanel->GetDefaultTitle();
+					m_TitleIDs[titleIDFilepath] = filePanel->GetDefaultTitle();
 				}
 				while (true);
 			}
 		}
 
-		explorerPanel->SetWorkspaceDirectory(this->workspaceDirectory);
+		m_pExplorerPanel->SetWorkspaceDirectory(m_WorkspaceDirectory);
 	}
 }

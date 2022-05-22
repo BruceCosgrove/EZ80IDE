@@ -37,33 +37,33 @@ namespace gbc
 	private:
 		void OnWindowCloseEvent(WindowCloseEvent& event);
 		void OnKeyPressEvent(KeyPressEvent& event);
-	private: // State methods.
+	public: // State methods.
 		// Checks if the current state is exactly the given state.
-		constexpr bool IsState(IDEState state) const noexcept { return this->state == state; }
+		constexpr bool IsState(IDEState state) const noexcept { return m_State == state; }
 
 		// Checks if the current state has all of the include states and none of the exclude states.
-		constexpr bool HasSubStates(IDEState includeStates, IDEState excludeStates = IDEState_None) const noexcept { return (state & includeStates) == includeStates && (state & excludeStates) == IDEState_None; }
+		constexpr bool HasSubStates(IDEState includeStates, IDEState excludeStates = IDEState_None) const noexcept { return (m_State & includeStates) == includeStates && (m_State & excludeStates) == IDEState_None; }
 
 		// Checks if the current state has at least one of the include states and none of the exclude states.
-		constexpr bool HasAnySubStates(IDEState includeStates, IDEState excludeStates = IDEState_None) const noexcept { return !!(state & includeStates) && (state & excludeStates) == IDEState_None; }
+		constexpr bool HasAnySubStates(IDEState includeStates, IDEState excludeStates = IDEState_None) const noexcept { return !!(m_State & includeStates) && (m_State & excludeStates) == IDEState_None; }
 
 		// Sets the current state.
-		constexpr void SetState(IDEState state) noexcept { this->state = state & IDEState_Mask; }
+		constexpr void SetState(IDEState state) noexcept { m_State = state & IDEState_Mask; }
 
 		// Adds or removes the given states depending on the condition.
 		constexpr void SetStates(IDEState states, bool condition) noexcept { if (condition) AddStates(states); else RemoveStates(states); }
 
 		// Adds a state to the current state.
-		constexpr void AddStates(IDEState states) noexcept { state |= states & IDEState_Mask; }
+		constexpr void AddStates(IDEState states) noexcept { m_State |= states & IDEState_Mask; }
 
 		// Removes a state from the current state.
-		constexpr void RemoveStates(IDEState states) noexcept { state &= ~states & IDEState_Mask; }
+		constexpr void RemoveStates(IDEState states) noexcept { m_State &= ~states & IDEState_Mask; }
 
 		// Toggles a state in the current state.
-		constexpr void ToggleStates(IDEState states) noexcept { state ^= states & IDEState_Mask; }
+		constexpr void ToggleStates(IDEState states) noexcept { m_State ^= states & IDEState_Mask; }
 	private:
-		IDEState state = IDEState_None;
-	private: // Operations.
+		IDEState m_State = IDEState_None;
+	public: // Operations.
 		// Opens a modal popup to create a new file.
 		void NewFile();
 
@@ -90,7 +90,7 @@ namespace gbc
 
 		// Closes the active workspace, if present.
 		void CloseWorkspace();
-	private:
+	public:
 		// Sets the user's clipboard to a utf-8 encoded string converted from the given filepath.
 		void CopyPath(const std::filesystem::path& filepath);
 
@@ -102,17 +102,20 @@ namespace gbc
 
 		// Sets the active workspace directory. Saves the active workspace, if present.
 		void SetWorkspaceDirectory(const std::filesystem::path& workspaceDirectory);
-
-		// Gets the active workspace directory.
-		inline const std::filesystem::path& GetWorkspaceDirectory() const noexcept { return workspaceDirectory; }
+	public:
+		inline const std::filesystem::path& GetWorkspaceDirectory() const noexcept { return m_WorkspaceDirectory; }
+		inline const std::filesystem::path& GetMetaDataDirectory() const noexcept { return m_MetaDataDirectory; }
+		inline const std::filesystem::path& GetSrcDirectory() const noexcept { return m_SrcDirectory; }
+		inline const std::filesystem::path& GetBinDirectory() const noexcept { return m_BinDirectory; }
 	private: // Filepath caches.
-		std::filesystem::path workspaceDirectory;
-		std::filesystem::path metaDataDirectory;
-		std::filesystem::path srcDirectory;
-		std::filesystem::path binDirectory;
-		std::filesystem::path titleIDsFilepath;
-		std::string imguiIniFilepathString;
-	private: // Popup methods.
+		std::filesystem::path m_WorkspaceDirectory;
+		std::filesystem::path m_MetaDataDirectory;
+		std::filesystem::path m_SrcDirectory;
+		std::filesystem::path m_BinDirectory;
+
+		std::filesystem::path m_TitleIDsFilepath;
+		std::string m_ImguiIniFilepathString;
+	public: // Popup methods.
 		// Returns true as long as the popup is open.
 		bool OpenPopup(const char* name, ImGuiPopupFlags flags = ImGuiPopupFlags_None);
 
@@ -124,7 +127,7 @@ namespace gbc
 
 		// Closes the open popup.
 		void ClosePopup(const char* name);
-	private: // File panel methods.
+	public: // File panel methods.
 		// Get the default title for a file panel.
 		const std::string& GetFilePanelTitle(const std::filesystem::path& filepath, uint64_t id);
 
@@ -147,8 +150,8 @@ namespace gbc
 		// Focuses a file panel if it exists, otherwise creates a new file panel and focuses it.
 		void FocusOrAddFilePanel(const std::filesystem::path& filepath);
 	private: // Cached title id info for file panels.
-		std::unordered_map<std::filesystem::path, std::string> titleIDs;
-		uint64_t nextTitleID = 0;
+		std::unordered_map<std::filesystem::path, std::string> m_TitleIDs;
+		uint64_t m_NextTitleID = 0;
 	private:
 		void UI_Dockspace();
 		void UI_MenuBar();
@@ -158,29 +161,27 @@ namespace gbc
 		void UI_Popup_Rename();
 		void UI_Popup_ConfirmDelete();
 
-		void(EZ80IDELayer::* openPopup)() = nullptr;
+		void(EZ80IDELayer::* m_pOpenPopup)() = nullptr;
 
-		uint32_t newFileSelectedExtension = 0;
-		uint32_t newFilePendingExtension = 0;
-		char newFilenameBuffer[__std_fs_max_path];
-		std::filesystem::path newFileInitialDirectory;
-		std::string newFileInitialDirectoryString;
+		uint32_t m_NewFileSelectedExtension = 0;
+		uint32_t m_NewFilePendingExtension = 0;
+		char m_NewFilenameBuffer[__std_fs_max_path];
+		std::filesystem::path m_NewFileInitialDirectory;
+		std::string m_NewFileInitialDirectoryString;
 
-		bool renamingFolder = false;
-		bool renamingOpenFile = false;
+		bool m_RenamingFolder = false;
+		bool m_RenamingOpenFile = false;
 
-		std::string deletingMessage;
-		bool deletingFolder = false;
+		std::string m_DeletingMessage;
+		bool m_DeletingFolder = false;
 	private:
-		friend class ExplorerPanel;
-		ExplorerPanel* explorerPanel = nullptr;
+		ExplorerPanel* m_pExplorerPanel = nullptr;
 
 		template<typename T> T* AddPanel(const std::string& name);
-		PanelStack panels;
+		PanelStack m_Panels;
 
-		friend class FilePanel;
 		FilePanel* AddFilePanel(const std::filesystem::path& filepath, uint64_t id = 0);
-		PanelStack filePanels;
+		PanelStack m_FilePanels;
 	};
 }
 

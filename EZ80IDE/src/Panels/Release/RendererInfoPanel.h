@@ -13,9 +13,9 @@ namespace gbc
 
 		virtual void OnImGuiRender(int) override;
 	private:
-		const char* vendor;
-		const char* renderer;
-		const char* version;
+		const char* m_pVendor;
+		const char* m_pRenderer;
+		const char* m_pVersion;
 	};
 }
 #endif

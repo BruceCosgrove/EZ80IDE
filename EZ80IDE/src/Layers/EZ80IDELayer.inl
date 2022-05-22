@@ -4,7 +4,7 @@ namespace gbc
 	T* EZ80IDELayer::AddPanel(const std::string& name)
 	{
 		T* panel = new T(this, name);
-		panels.Push(panel);
+		m_Panels.Push(panel);
 		return panel;
 	}
 }

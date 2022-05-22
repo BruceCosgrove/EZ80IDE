@@ -12,10 +12,10 @@ namespace gbc
 	{
 		if (ImGuiHelper::BeginTable("Profiling", 2))
 		{
-			if (ImGuiHelper::Checkbox(profiling ? "Stop Profiling" : "Start Profiling", &profiling))
+			if (ImGuiHelper::Checkbox(m_Profiling ? "Stop Profiling" : "Start Profiling", &m_Profiling))
 			{
-				if (profiling)
-					GBC_PROFILE_BEGIN_RUNTIME("Runtime", (std::wstring(L"ProfileSessions/GBCProfileRuntime") += std::to_wstring(++profileCount)) += L".json");
+				if (m_Profiling)
+					GBC_PROFILE_BEGIN_RUNTIME("Runtime", (std::wstring(L"ProfileSessions/GBCProfileRuntime") += std::to_wstring(++m_ProfileCount)) += L".json");
 				else
 					GBC_PROFILE_END_RUNTIME();
 			}

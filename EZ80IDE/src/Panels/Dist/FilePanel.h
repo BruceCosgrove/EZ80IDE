@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
 #include "Panels/Panel.h"
 #include <filesystem>
 
@@ -15,26 +14,25 @@ namespace gbc
 
 		virtual void OnImGuiRender(int) override;
 	public:
-		inline virtual const std::string& GetTitle() const override { return windowTitle; }
-		inline const std::filesystem::path& GetFilepath() const noexcept { return filepath; }
+		inline const std::filesystem::path& GetFilepath() const noexcept { return m_Filepath; }
+		inline virtual const std::string& GetTitle() const override { return m_WindowTitle; }
 		void Rename(const std::filesystem::path& filepath) noexcept;
 
 		virtual void SetEnabled(bool enabled) noexcept override;
 		virtual void SetFocused(bool focused) noexcept override;
 
 		void OnChanged();
-		inline void MarkForCloseWithoutSaving() noexcept { unsavedChanges = false; }
+		inline void MarkForCloseWithoutSaving() noexcept { m_UnsavedChanges = false; }
 		void Save();
 	private:
 		void UpdateWindowTitle();
 	private:
-		std::filesystem::path filepath;
-		std::string windowTitle;
-		bool unsavedChanges = false;
-		size_t asteriskIndex;
+		std::filesystem::path m_Filepath;
+		std::string m_WindowTitle;
+		bool m_UnsavedChanges = false;
+		size_t m_AsteriskIndex;
 	public:
-		static constexpr char identifier[] = "###file";
-		static constexpr size_t identifierLength = sizeof(identifier) / sizeof(*identifier) - 1;
+		static constexpr char s_Identifier[] = "###file";
+		static constexpr size_t m_IdentifierLength = sizeof(s_Identifier) / sizeof(*s_Identifier) - 1;
 	};
 }
-#endif

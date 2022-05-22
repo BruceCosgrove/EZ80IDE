@@ -59,24 +59,24 @@ namespace gbc
 		// Returns the topmost panel, if present, otherwise nullptr.
 		const Panel* Peek() const noexcept;
 	public: // Panel iterators if you need them.
-		constexpr auto begin() noexcept { return panels.begin(); }
-		constexpr auto end() noexcept { return panels.end(); }
-		constexpr auto rbegin() noexcept { return panels.rbegin(); }
-		constexpr auto rend() noexcept { return panels.rend(); }
-		constexpr auto cbegin() const noexcept { return panels.cbegin(); }
-		constexpr auto cend() const noexcept { return panels.cend(); }
-		constexpr auto crbegin() const noexcept { return panels.crbegin(); }
-		constexpr auto crend() const noexcept { return panels.crend(); }
-		constexpr auto begin() const noexcept { return panels.begin(); }
-		constexpr auto end() const noexcept { return panels.end(); }
-		constexpr auto rbegin() const noexcept { return panels.rbegin(); }
-		constexpr auto rend() const noexcept { return panels.rend(); }
+		constexpr auto begin() noexcept { return m_Panels.begin(); }
+		constexpr auto end() noexcept { return m_Panels.end(); }
+		constexpr auto rbegin() noexcept { return m_Panels.rbegin(); }
+		constexpr auto rend() noexcept { return m_Panels.rend(); }
+		constexpr auto cbegin() const noexcept { return m_Panels.cbegin(); }
+		constexpr auto cend() const noexcept { return m_Panels.cend(); }
+		constexpr auto crbegin() const noexcept { return m_Panels.crbegin(); }
+		constexpr auto crend() const noexcept { return m_Panels.crend(); }
+		constexpr auto begin() const noexcept { return m_Panels.begin(); }
+		constexpr auto end() const noexcept { return m_Panels.end(); }
+		constexpr auto rbegin() const noexcept { return m_Panels.rbegin(); }
+		constexpr auto rend() const noexcept { return m_Panels.rend(); }
 	private:
 		Panel* Focus(std::vector<Panel*>::iterator it) noexcept;
 		Panel* Close(std::vector<Panel*>::iterator it) noexcept;
 	private:
-		std::vector<Panel*> panels;
-		size_t closedPanels = 0;
-		bool changed = false;
+		std::vector<Panel*> m_Panels;
+		size_t m_ClosedPanels = 0;
+		bool m_Changed = false;
 	};
 }

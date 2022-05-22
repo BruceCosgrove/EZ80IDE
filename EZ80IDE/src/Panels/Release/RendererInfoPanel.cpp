@@ -9,20 +9,20 @@ namespace gbc
 		: Panel(ez80IDELayer, title)
 	{
 		const auto& context = Application::Get().GetWindow().GetContext();
-		vendor = context.GetVendor();
-		renderer = context.GetRenderer();
-		version = context.GetVersion();
+		m_pVendor = context.GetVendor();
+		m_pRenderer = context.GetRenderer();
+		m_pVersion = context.GetVersion();
 	}
 
 	void RendererInfoPanel::OnImGuiRender(int)
 	{
 		if (ImGuiHelper::BeginTable("RendererInfo"))
 		{
-			ImGuiHelper::Text("Vendor", vendor);
+			ImGuiHelper::Text("Vendor", m_pVendor);
 			ImGuiHelper::NextTableColumn();
-			ImGuiHelper::Text("Renderer", renderer);
+			ImGuiHelper::Text("Renderer", m_pRenderer);
 			ImGuiHelper::NextTableColumn();
-			ImGuiHelper::Text("Version", version);
+			ImGuiHelper::Text("Version", m_pVersion);
 			ImGuiHelper::EndTable();
 		}
 	}

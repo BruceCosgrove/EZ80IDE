@@ -5,17 +5,17 @@ namespace gbc
 {
 	void Panel::OnImGuiRender()
 	{
-		enabledChanged = false;
-		focusChanged = false;
-		hoverChanged = false;
-		sizeChanged = false;
-		positionChanged = false;
+		m_EnabledChanged = false;
+		m_FocusChanged = false;
+		m_HoverChanged = false;
+		m_SizeChanged = false;
+		m_PositionChanged = false;
 
-		if (enabled)
+		if (m_Enabled)
 		{
 			if (ProvideDefaultWindow())
 			{
-				bool enabled = this->enabled;
+				bool enabled = m_Enabled;
 				ImGui::Begin(GetTitle().c_str(), &enabled);
 				Update(enabled);
 				if (enabled)
@@ -42,55 +42,55 @@ namespace gbc
 
 	void Panel::SetEnabled(bool enabled) noexcept
 	{
-		enabledChanged = this->enabled != enabled;
-		if (enabledChanged)
+		m_EnabledChanged = m_Enabled != enabled;
+		if (m_EnabledChanged)
 		{
-			this->enabled = enabled;
+			m_Enabled = enabled;
 			if (!enabled)
 			{
-				focused = false;
-				hovered = false;
+				m_Focused = false;
+				m_Hovered = false;
 			}
 		}
 	}
 
 	void Panel::SetFocused(bool focused) noexcept
 	{
-		if (enabled)
+		if (m_Enabled)
 		{
-			focusChanged = this->focused != focused;
-			if (focusChanged)
-				this->focused = focused;
+			m_FocusChanged = m_Focused != focused;
+			if (m_FocusChanged)
+				m_Focused = focused;
 		}
 	}
 
 	void Panel::SetHovered(bool hovered) noexcept
 	{
-		if (enabled)
+		if (m_Enabled)
 		{
-			hoverChanged = this->hovered != hovered;
-			if (hoverChanged)
-				this->hovered = hovered;
+			m_HoverChanged = m_Hovered != hovered;
+			if (m_HoverChanged)
+				m_Hovered = hovered;
 		}
 	}
 
 	void Panel::SetSize(const glm::ivec2& size) noexcept
 	{
-		if (enabled)
+		if (m_Enabled)
 		{
-			sizeChanged = size.x > 0 && size.y > 0 && this->size.x != size.x || this->size.y != size.y;
-			if (sizeChanged)
-				this->size = size;
+			m_SizeChanged = size.x > 0 && size.y > 0 && m_Size.x != size.x || m_Size.y != size.y;
+			if (m_SizeChanged)
+				m_Size = size;
 		}
 	}
 
 	void Panel::SetPosition(const glm::ivec2& position) noexcept
 	{
-		if (enabled)
+		if (m_Enabled)
 		{
-			positionChanged = this->position.x != position.x || this->position.y != position.y;
-			if (positionChanged)
-				this->position = position;
+			m_PositionChanged = m_Position.x != position.x || m_Position.y != position.y;
+			if (m_PositionChanged)
+				m_Position = position;
 		}
 	}
 }

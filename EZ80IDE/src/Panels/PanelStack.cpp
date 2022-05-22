@@ -11,7 +11,7 @@ namespace gbc
 	{
 		if (!Empty())
 		{
-			auto panel = panels.back();
+			auto panel = m_Panels.back();
 			if (panel->IsFocused())
 				panel->OnEvent(event);
 		}
@@ -27,44 +27,44 @@ namespace gbc
 			{
 				if (panel->IsFocused())
 					(void)Focus(it);
-				if (++count >= panels.size())
+				if (++count >= m_Panels.size())
 					break;
 			}
-			else if (panel->HasEnabledChanged() && closedPanels <= static_cast<size_t>(it - begin()))
+			else if (panel->HasEnabledChanged() && m_ClosedPanels <= static_cast<size_t>(it - begin()))
 			{
 				if (!panel->IsEnabled())
 					(void)Close(it);
-				if (++count >= panels.size())
+				if (++count >= m_Panels.size())
 					break;
 			}
 			else
 				++it;
 		}
 
-		changed = false;
+		m_Changed = false;
 	}
 
 	void PanelStack::Push(Panel* panel)
 	{
-		panels.push_back(panel);
+		m_Panels.push_back(panel);
 	}
 
 	void PanelStack::Close() noexcept
 	{
-		if (!Empty() && panels.back()->IsEnabled())
+		if (!Empty() && m_Panels.back()->IsEnabled())
 		{
 			// Mark for disabling so UpdateOrder doesn't try to reclose it.
-			panels.back()->SetEnabled(false);
-			changed = true;
+			m_Panels.back()->SetEnabled(false);
+			m_Changed = true;
 		}
 	}
 
 	void PanelStack::RemoveClosedPanels() noexcept
 	{
-		for (auto it = begin(); it != begin() + closedPanels; ++it)
+		for (auto it = begin(); it != begin() + m_ClosedPanels; ++it)
 			delete *it;
-		panels.erase(begin(), begin() + closedPanels);
-		closedPanels = 0;
+		m_Panels.erase(begin(), begin() + m_ClosedPanels);
+		m_ClosedPanels = 0;
 	}
 
 	void PanelStack::Remove(size_t index) noexcept
@@ -74,9 +74,9 @@ namespace gbc
 			auto it = begin() + index;
 			Panel* panel = *it;
 			if (!panel->IsEnabled())
-				closedPanels--;
+				m_ClosedPanels--;
 			delete panel;
-			panels.erase(it);
+			m_Panels.erase(it);
 		}
 	}
 
@@ -86,7 +86,7 @@ namespace gbc
 		{
 			Panel* panel = Focus(begin() + index);
 			if (!panel->IsEnabled())
-				closedPanels--;
+				m_ClosedPanels--;
 			panel->SetEnabled(true);
 			panel->SetFocused(true);
 		}
@@ -94,41 +94,41 @@ namespace gbc
 
 	void PanelStack::Clear() noexcept
 	{
-		for (auto panel : panels)
+		for (auto panel : m_Panels)
 			delete panel;
-		panels.clear();
-		closedPanels = 0;
-		changed = false;
+		m_Panels.clear();
+		m_ClosedPanels = 0;
+		m_Changed = false;
 	}
 
 	size_t PanelStack::Size() const noexcept
 	{
-		return panels.size();
+		return m_Panels.size();
 	}
 
 	size_t PanelStack::GetOpenPanelCount() const noexcept
 	{
-		return Size() - closedPanels;
+		return Size() - m_ClosedPanels;
 	}
 
 	bool PanelStack::HasFocusedPanel() const noexcept
 	{
-		if (changed)
+		if (m_Changed)
 		{
 			// If changed from most recent OnImGuiRender(), then simply checking
 			// if the last panel is focused might be working with outdated data.
-			for (auto it = rbegin(); it != rend() - closedPanels; ++it)
+			for (auto it = rbegin(); it != rend() - m_ClosedPanels; ++it)
 				if ((*it)->IsFocused())
 					return true;
 			return false;
 		}
 
-		return !Empty() && panels.back()->IsFocused();
+		return !Empty() && m_Panels.back()->IsFocused();
 	}
 
 	bool PanelStack::Empty() const noexcept
 	{
-		return panels.empty();
+		return m_Panels.empty();
 	}
 
 	Panel* PanelStack::operator[](size_t index) noexcept
@@ -138,7 +138,7 @@ namespace gbc
 
 	const Panel* PanelStack::operator[](size_t index) const noexcept
 	{
-		return !Empty() ? panels[index] : nullptr;
+		return !Empty() ? m_Panels[index] : nullptr;
 	}
 
 	Panel* PanelStack::Peek() noexcept
@@ -148,7 +148,7 @@ namespace gbc
 
 	const Panel* PanelStack::Peek() const noexcept
 	{
-		return !Empty() ? panels.back() : nullptr;
+		return !Empty() ? m_Panels.back() : nullptr;
 	}
 
 	Panel* PanelStack::Focus(std::vector<Panel*>::iterator it) noexcept
@@ -172,14 +172,14 @@ namespace gbc
 		Panel* panel = *it;
 
 		// Slide closed panel down to just before the first enabled panel.
-		while (it != begin() + closedPanels)
+		while (it != begin() + m_ClosedPanels)
 		{
 			auto prev = it - 1;
 			*it = *prev;
 			it = prev;
 		}
 
-		closedPanels++;
+		m_ClosedPanels++;
 		*it = panel;
 		return panel;
 	}
