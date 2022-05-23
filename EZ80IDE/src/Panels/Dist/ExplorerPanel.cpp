@@ -180,6 +180,8 @@ namespace ide
 			m_WorkspaceDirectory.subDirectories.clear();
 			m_WorkspaceDirectory.files.clear();
 			m_SelectedFilepath.clear();
+
+			m_Notifier.Remove();
 		}
 		else
 		{

@@ -32,6 +32,7 @@ project "GBC"
 
 		"%{includedir.glm}",
 		"%{includedir.stb}",
+		"%{includedir.yaml}",
 
 		"%{includedir.VulkanSDK}"
 	}
@@ -40,7 +41,8 @@ project "GBC"
 		"glad",
 		"glfw",
 		"imgui",
-		"stb"
+		"stb",
+		"yaml"
 	}
 
 	filter "system:windows"

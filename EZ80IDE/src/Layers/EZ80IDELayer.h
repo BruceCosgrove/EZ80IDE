@@ -112,6 +112,12 @@ namespace ide
 
 		// Sets the active workspace directory. Saves the active workspace, if present.
 		void SetWorkspaceDirectory(const std::filesystem::path& workspaceDirectory);
+
+		// Writes workspace metadata.
+		void SerializeWorkspace();
+
+		// Reads workspace metadata.
+		void DeserializeWorkspace();
 	public:
 		inline const std::filesystem::path& GetWorkspaceDirectory() const noexcept { return m_WorkspaceDirectory; }
 		inline const std::filesystem::path& GetMetaDataDirectory() const noexcept { return m_MetaDataDirectory; }
@@ -123,12 +129,10 @@ namespace ide
 		std::filesystem::path m_MetaDataDirectory;
 		std::filesystem::path m_SrcDirectory;
 		std::filesystem::path m_BinDirectory;
-		std::filesystem::path m_CalcDirectory;
+		std::filesystem::path m_CalcDirectory; // Stores ram files, and I want to say a copy of the rom file.
 
-		std::filesystem::path m_TitleIDsFilepath;
-		std::filesystem::path m_ROMFilepathFilepath;
+		std::filesystem::path m_MetaDataFilepath;
 		std::filesystem::path m_ROMFilepath;
-		std::string m_ROMFilepathString;
 		std::string m_ImguiIniFilepathString;
 	public: // Popup methods.
 		// Returns true as long as the popup is open.

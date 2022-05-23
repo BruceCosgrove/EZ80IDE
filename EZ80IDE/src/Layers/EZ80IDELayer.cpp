@@ -8,6 +8,7 @@
 #include "Panels/Debug/DemoPanel.h"
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
+#include <yaml-cpp/yaml.h>
 #include <fstream>
 
 namespace ide
@@ -40,8 +41,8 @@ DockId=0x00000004,0
 [Docking][Data]
 DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
   DockNode    ID=0x00000003 Parent=0x33675C32 SizeRef=1590,991 Split=X
-    DockNode  ID=0x00000001 Parent=0x00000003 SizeRef=329,874 Selected=0x1E89CEB8
-    DockNode  ID=0x00000002 Parent=0x00000003 SizeRef=1269,874 CentralNode=1
+	DockNode  ID=0x00000001 Parent=0x00000003 SizeRef=329,874 Selected=0x1E89CEB8
+	DockNode  ID=0x00000002 Parent=0x00000003 SizeRef=1269,874 CentralNode=1
   DockNode    ID=0x00000004 Parent=0x33675C32 SizeRef=328,991 Selected=0x2C2434F9
 )"
 		};
@@ -232,14 +233,14 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				if (ImGui::MenuItem("Load ROM", nullptr, false, HasSubStates(IDEState_WorkspaceOpen, IDEState_ModalPopup | IDEState_ROMLoaded)))
 				{
 					if (LoadROM())
-						GBC_INFO("Loaded ROM Image from \"{0}\".", m_ROMFilepathString);
+						GBC_INFO("Loaded ROM Image from \"{0}\".", m_ROMFilepath.string());
 					else
-						GBC_WARN("Failed to load ROM image from \"{0}\".", m_ROMFilepathString);
+						GBC_WARN("Failed to load ROM image from \"{0}\".", m_ROMFilepath.string());
 				}
 
 				if (ImGui::MenuItem("Unload ROM", nullptr, false, HasSubStates(IDEState_WorkspaceOpen | IDEState_ROMLoaded, IDEState_ModalPopup)))
 				{
-					GBC_INFO("Unloading ROM Image from \"{0}\"...", m_ROMFilepathString);
+					GBC_INFO("Unloading ROM Image from \"{0}\"...", m_ROMFilepath.string());
 					UnloadROM();
 				}
 
@@ -1051,29 +1052,15 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 	{
 		if (HasSubStates(IDEState_WorkspaceOpen))
 		{
-			// Remove all closed panels so they aren't written to the title ids file.
+			// Remove all closed panels so they aren't written to metadata.
 			m_FilePanels.RemoveClosedPanels();
 
-			// Save title IDs.
-			std::ofstream titleIDsFile(m_TitleIDsFilepath);
-			if (titleIDsFile.is_open())
-			{
-				for (auto& [filepath, id] : m_TitleIDs)
-				{
-					auto filepathString = filepath.string();
-					titleIDsFile.write(filepathString.c_str(), filepathString.length());
-					titleIDsFile.put('\n');
-					titleIDsFile.write(id.c_str() + FilePanel::m_IdentifierLength, id.length() - FilePanel::m_IdentifierLength);
-					titleIDsFile.put('\n');
-				}
+			// Save all metadata.
+			SerializeWorkspace();
 
-				m_TitleIDs.clear();
-				m_NextTitleID = 0;
-
-				titleIDsFile.close();
-			}
-			else
-				GBC_ASSERT(false, "Couldn't save title ids!");
+			// Reset title ids.
+			m_TitleIDs.clear();
+			m_NextTitleID = 0;
 
 			// Save the old workspace imgui ini.
 			ImGui::SaveIniSettingsToDisk(m_ImguiIniFilepathString.c_str());
@@ -1081,17 +1068,6 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			// Save all unsaved files, delete all file panels,
 			// and make all file imgui windows not persist to next workspace ini.
 			m_FilePanels.Clear();
-
-			if (HasAnySubStates(IDEState_ROMLoaded))
-			{
-				std::ofstream romFilepathFile(m_ROMFilepathFilepath);
-				if (romFilepathFile.is_open())
-				{
-					romFilepathFile.write(m_ROMFilepathString.c_str(), m_ROMFilepathString.length());
-					romFilepathFile.put('\n');
-					romFilepathFile.close();
-				}
-			}
 		}
 	}
 
@@ -1109,9 +1085,7 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			m_SrcDirectory.clear();
 			m_BinDirectory.clear();
 			m_CalcDirectory.clear();
-			m_TitleIDsFilepath.clear();
 			m_ROMFilepath.clear();
-			m_ROMFilepathString.clear();
 		}
 		else
 		{
@@ -1130,68 +1104,83 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			m_MetaDataDirectory = workspaceDirectory / L".ez80ide";
 			gbc::FileIO::MakeHiddenDirectory(m_MetaDataDirectory);
 
-			m_ROMFilepathFilepath = m_MetaDataDirectory / "rom_filepath.ini";
-			if (gbc::FileIO::FileExists(m_ROMFilepathFilepath))
-			{
-				std::string romFilepathFilepathFile = gbc::FileIO::ReadFile(m_ROMFilepathFilepath);
-				m_ROMFilepath = ((std::string_view)romFilepathFilepathFile).substr(0, romFilepathFilepathFile.find('\n'));
-
-				if (gbc::FileIO::FileExists(m_ROMFilepath))
-				{
-					m_ROMFilepathString = m_ROMFilepath.string();
-					m_EmulatorThread.Load(m_ROMFilepathString.c_str());
-					AddStates(IDEState_ROMLoaded);
-				}
-				else
-				{
-					RemoveStates(IDEState_ROMLoaded);
-
-					m_ROMFilepath.clear();
-					m_ROMFilepathString.clear();
-
-					bool status = gbc::FileIO::Delete(m_ROMFilepathFilepath);
-					GBC_ASSERT(status, "Failed to delete rom filepath ini file.");
-				}
-			}
-
 			std::filesystem::path imguiIniFilepath = m_MetaDataDirectory / L"imgui.ini";
 			m_ImguiIniFilepathString = imguiIniFilepath.string();
 			if (gbc::FileIO::FileExists(imguiIniFilepath))
 				ImGui::LoadIniSettingsFromDisk(m_ImguiIniFilepathString.c_str());
 
-			m_TitleIDsFilepath = m_MetaDataDirectory / L"title_ids.ini";
-			if (gbc::FileIO::FileExists(m_TitleIDsFilepath))
-			{
-				std::string titleIDFile = gbc::FileIO::ReadFile(m_TitleIDsFilepath);
-
-				size_t filepathStart = 0;
-				do
-				{
-					size_t filepathEnd = titleIDFile.find('\n', filepathStart);
-					if (filepathEnd == std::string::npos)
-						break;
-
-					auto titleIDFileView = (std::string_view)titleIDFile;
-					std::filesystem::path titleIDFilepath(titleIDFileView.substr(filepathStart, filepathEnd - filepathStart));
-					size_t idBegin = filepathEnd + 1;
-					size_t idEnd = titleIDFileView.find('\n', idBegin + 1);
-					auto titleIDString = titleIDFileView.substr(idBegin, idEnd - idBegin);
-					filepathStart = idEnd + 1;
-
-					uint64_t titleID;
-					if (!gbc::util::SToI(titleIDString, titleID, 36))
-						titleID = 0;
-					FilePanel* filePanel = AddFilePanel(titleIDFilepath, titleID);
-
-					// I would move titleIDFilepath here, but std::filesystem::path has the default
-					// move constructor, not anything that actually MOVEs the filepath's memory.
-					m_TitleIDs[titleIDFilepath] = filePanel->GetDefaultTitle();
-				}
-				while (true);
-			}
+			m_MetaDataFilepath = m_MetaDataDirectory / L"metadata.yaml";
+			DeserializeWorkspace();
 		}
 
 		m_pExplorerPanel->SetWorkspaceDirectory(m_WorkspaceDirectory);
+	}
+
+	void EZ80IDELayer::SerializeWorkspace()
+	{
+		std::ofstream metaDataFile(m_MetaDataFilepath);
+		GBC_ASSERT(metaDataFile.is_open(), "Failed to open meta data file when closing workspace.");
+
+		YAML::Emitter out;
+		out << YAML::BeginMap;
+
+		if (HasAnySubStates(IDEState_ROMLoaded))
+			out << YAML::Key << "ROMFilepath" << YAML::Value << m_ROMFilepath.string();
+
+		// TODO: save ram as well.
+
+		if (!m_TitleIDs.empty())
+		{
+			out << YAML::Key << "TitleIDs" << YAML::Value << YAML::BeginMap;
+			for (auto& [filepath, id] : m_TitleIDs)
+				out << YAML::Key << filepath.string() << YAML::Value << id;
+			out << YAML::EndMap;
+		}
+
+		out << YAML::EndMap;
+		metaDataFile << out.c_str();
+		metaDataFile.close();
+	}
+
+	void EZ80IDELayer::DeserializeWorkspace()
+	{
+		std::ifstream metaDataFile(m_MetaDataFilepath);
+		GBC_ASSERT(metaDataFile.is_open(), "Failed to open meta data file when opening workspace.");
+
+		YAML::Node metaData = YAML::Load(metaDataFile);
+		metaDataFile.close();
+
+		if (auto romFilepathNode = metaData["ROMFilepath"])
+		{
+			m_ROMFilepath = romFilepathNode.as<std::string>();
+
+			if (gbc::FileIO::FileExists(m_ROMFilepath))
+			{
+				auto romFilepathString = m_ROMFilepath.string();
+				m_EmulatorThread.Load(romFilepathString.c_str());
+				AddStates(IDEState_ROMLoaded);
+			}
+			else
+			{
+				RemoveStates(IDEState_ROMLoaded);
+				m_ROMFilepath.clear();
+			}
+		}
+
+		if (auto titleIDsNode = metaData["TitleIDs"])
+		{
+			for (auto titleIDNode : titleIDsNode)
+			{
+				std::filesystem::path titleIDFilepath = titleIDNode.first.as<std::string>();
+
+				uint64_t titleID;
+				if (!gbc::util::SToI(titleIDNode.second.as<std::string>(), titleID, 36))
+					titleID = 0;
+
+				FilePanel* filePanel = AddFilePanel(titleIDFilepath, titleID);
+				m_TitleIDs[std::move(titleIDFilepath)] = filePanel->GetDefaultTitle();
+			}
+		}
 	}
 
 	bool EZ80IDELayer::LoadROM()
@@ -1205,7 +1194,6 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			return false;
 
 		m_ROMFilepath = std::move(filepath);
-		m_ROMFilepathString = std::move(filepathString);
 		m_EmulatorThread.Start();
 		AddStates(IDEState_ROMLoaded | IDEState_EmulatorRunning);
 		return true;
@@ -1215,11 +1203,6 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 	{
 		m_EmulatorThread.Unload();
 		RemoveStates(IDEState_ROMLoaded | IDEState_EmulatorRunning);
-
-		bool status = gbc::FileIO::Delete(m_ROMFilepathFilepath);
-		GBC_ASSERT(status, "Failed to delete \"./.ez80ide/rom_filepath.ini.\".");
-
 		m_ROMFilepath.clear();
-		m_ROMFilepathString.clear();
 	}
 }

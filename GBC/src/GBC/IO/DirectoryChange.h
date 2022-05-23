@@ -30,8 +30,8 @@ namespace gbc::DirectoryChange
 	class Notifier
 	{
 	public:
-		Notifier(const NotificationFunc& notificationFunc, const std::filesystem::path& directoryPath, NotificationType notificationType, bool checkSubdirectories);
 		Notifier() noexcept = default;
+		Notifier(const NotificationFunc& notificationFunc, const std::filesystem::path& directoryPath, NotificationType notificationType, bool checkSubdirectories);
 		Notifier(Notifier&& notifier) noexcept;
 		Notifier& operator=(Notifier&& notifier) noexcept;
 		~Notifier();

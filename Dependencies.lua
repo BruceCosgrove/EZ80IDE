@@ -5,6 +5,7 @@ includedir["glad"] = "%{wks.location}/GBC/vendor/glad/include"
 includedir["glfw"] = "%{wks.location}/GBC/vendor/glfw/include"
 includedir["imgui"] = "%{wks.location}/GBC/vendor/imgui/include"
 includedir["stb"] = "%{wks.location}/GBC/vendor/stb/include"
+includedir["yaml"] = "%{wks.location}/GBC/vendor/yaml/include"
 includedir["CEmu"] = "%{wks.location}/EZ80IDE/vendor/CEmu"
 -- Header-only; they don't have their own visual studio project
 includedir["glm"] = "%{wks.location}/GBC/vendor/glm/include"

@@ -2,7 +2,7 @@ project "EZ80IDE"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++latest"
-	cdialect "C17" -- For CEmuGui.cpp.
+	cdialect "C17" -- For CEmuGui.c.
 	staticruntime "off"
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
@@ -12,7 +12,7 @@ project "EZ80IDE"
 		"src/**.h",
 		"src/**.inl",
 		"src/**.cpp",
-		"src/**.c" -- For CEmuGui.cpp.
+		"src/**.c" -- For CEmuGui.c.
 	}
 
 	defines {
@@ -28,6 +28,7 @@ project "EZ80IDE"
 
 		"%{includedir.glm}",
 		"%{includedir.spdlog}",
+		"%{includedir.yaml}",
 
 		"%{includedir.CEmu}"
 	}
