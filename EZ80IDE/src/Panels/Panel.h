@@ -82,5 +82,10 @@ namespace ide
 		bool m_HoverChanged : 1 = false;
 		bool m_SizeChanged : 1 = false;
 		bool m_PositionChanged : 1 = false;
+	private:
+		Panel(const Panel&) = delete;
+		Panel(Panel&&) = delete;
+		Panel& operator=(const Panel&) = delete;
+		Panel& operator=(Panel&&) = delete;
 	};
 }

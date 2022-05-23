@@ -1,9 +1,8 @@
 #pragma once
 
-#include "core/cemu.h"
-#if GBC_PLATFORM_WINDOWS
-	#include <Windows.h>
-#endif
+#include "CEmu/core/cemu.h"
+#include <stdlib.h>
+#include <stdarg.h>
 
 void gui_console_clear(void)
 {

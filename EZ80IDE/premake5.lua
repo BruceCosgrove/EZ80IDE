@@ -29,7 +29,7 @@ project "EZ80IDE"
 		"%{includedir.glm}",
 		"%{includedir.spdlog}",
 
-		"vendor/CEmu"
+		"%{includedir.CEmu}"
 	}
 
 	links {

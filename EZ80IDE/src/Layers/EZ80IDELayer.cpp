@@ -1,7 +1,8 @@
 #include "EZ80IDELayer.h"
 #include "GBC/Util/Util.h"
-#include "Panels/Dist/ExplorerPanel.h"
 #include "Panels/Dist/FilePanel.h"
+#include "Panels/Dist/ExplorerPanel.h"
+#include "Panels/Dist/LCDPanel.h"
 #include "Panels/Release/RendererInfoPanel.h"
 #include "Panels/Debug/ProfilingPanel.h"
 #include "Panels/Debug/DemoPanel.h"
@@ -30,10 +31,18 @@ Size=329,991
 Collapsed=0
 DockId=0x00000001,0
 
+[Window][LCD]
+Pos=1592,26
+Size=328,991
+Collapsed=0
+DockId=0x00000004,0
+
 [Docking][Data]
-DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
-  DockNode  ID=0x00000001 Parent=0x33675C32 SizeRef=329,874 Selected=0x1E89CEB8
-  DockNode  ID=0x00000002 Parent=0x33675C32 SizeRef=1269,874 CentralNode=1
+DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
+  DockNode    ID=0x00000003 Parent=0x33675C32 SizeRef=1590,991 Split=X
+    DockNode  ID=0x00000001 Parent=0x00000003 SizeRef=329,874 Selected=0x1E89CEB8
+    DockNode  ID=0x00000002 Parent=0x00000003 SizeRef=1269,874 CentralNode=1
+  DockNode    ID=0x00000004 Parent=0x33675C32 SizeRef=328,991 Selected=0x2C2434F9
 )"
 		};
 		ImGui::LoadIniSettingsFromMemory(defaultImGuiIniData, sizeof(defaultImGuiIniData));
@@ -49,6 +58,9 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 #endif
 
 		m_pExplorerPanel = AddPanel<ExplorerPanel>("Explorer");
+		m_pLCDPanel = AddPanel<emu::LCDPanel>("LCD");
+
+		m_EmulatorThread.SetLCDTexture(m_pLCDPanel->GetLocalLCDTexture());
 	}
 
 	void EZ80IDELayer::OnDetach()
@@ -136,6 +148,7 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			DEBUG_DRAW_STATE(PopupOpen);
 			DEBUG_DRAW_STATE(ModalPopup);
 			DEBUG_DRAW_STATE(ROMLoaded);
+			DEBUG_DRAW_STATE(EmulatorRunning);
 			ImGui::Unindent();
 #undef DEBUG_DRAW_STATE
 			ImGui::End();
@@ -228,6 +241,16 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				{
 					GBC_INFO("Unloading ROM Image from \"{0}\"...", m_ROMFilepathString);
 					UnloadROM();
+				}
+
+				bool running = HasSubStates(IDEState_EmulatorRunning);
+				if (ImGui::MenuItem("Emulation Running", nullptr, &running, HasSubStates(IDEState_WorkspaceOpen | IDEState_ROMLoaded)))
+				{
+					ToggleStates(IDEState_EmulatorRunning);
+					if (running)
+						m_EmulatorThread.Start();
+					else
+						m_EmulatorThread.Stop();
 				}
 
 				ImGui::EndMenu();
@@ -1069,8 +1092,6 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 					romFilepathFile.close();
 				}
 			}
-			else if (gbc::FileIO::FileExists(m_ROMFilepath)) // TODO: *should* cache filepath separately.
-				gbc::FileIO::Delete(m_ROMFilepath);
 		}
 	}
 
@@ -1116,9 +1137,15 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				m_ROMFilepath = ((std::string_view)romFilepathFilepathFile).substr(0, romFilepathFilepathFile.find('\n'));
 
 				if (gbc::FileIO::FileExists(m_ROMFilepath))
+				{
 					m_ROMFilepathString = m_ROMFilepath.string();
+					m_EmulatorThread.Load(m_ROMFilepathString.c_str());
+					AddStates(IDEState_ROMLoaded);
+				}
 				else
 				{
+					RemoveStates(IDEState_ROMLoaded);
+
 					m_ROMFilepath.clear();
 					m_ROMFilepathString.clear();
 
@@ -1180,14 +1207,17 @@ DockSpace   ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 		m_ROMFilepath = std::move(filepath);
 		m_ROMFilepathString = std::move(filepathString);
 		m_EmulatorThread.Start();
-		AddStates(IDEState_ROMLoaded);
+		AddStates(IDEState_ROMLoaded | IDEState_EmulatorRunning);
 		return true;
 	}
 
 	void EZ80IDELayer::UnloadROM()
 	{
 		m_EmulatorThread.Unload();
-		RemoveStates(IDEState_ROMLoaded);
+		RemoveStates(IDEState_ROMLoaded | IDEState_EmulatorRunning);
+
+		bool status = gbc::FileIO::Delete(m_ROMFilepathFilepath);
+		GBC_ASSERT(status, "Failed to delete \"./.ez80ide/rom_filepath.ini.\".");
 
 		m_ROMFilepath.clear();
 		m_ROMFilepathString.clear();

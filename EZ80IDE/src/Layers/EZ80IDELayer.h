@@ -17,6 +17,7 @@ namespace ide
 		IDEState_PopupOpen          = 1 << 4,
 		IDEState_ModalPopup         = 1 << 5,
 		IDEState_ROMLoaded          = 1 << 6,
+		IDEState_EmulatorRunning    = 1 << 7,
 
 		// Automatically creates the ide state mask
 		_IDEState_Last, IDEState_Mask = (_IDEState_Last << 1) - 3
@@ -25,6 +26,10 @@ namespace ide
 	class Panel;
 	class FilePanel;
 	class ExplorerPanel;
+	namespace emu
+	{
+		class LCDPanel;
+	}
 
 	class EZ80IDELayer : public gbc::Layer
 	{
@@ -186,12 +191,15 @@ namespace ide
 		bool m_DeletingFolder = false;
 	private:
 		ExplorerPanel* m_pExplorerPanel = nullptr;
+		emu::LCDPanel* m_pLCDPanel = nullptr;
 
 		template<typename T> T* AddPanel(const std::string& name);
 		PanelStack m_Panels;
 
 		FilePanel* AddFilePanel(const std::filesystem::path& filepath, uint64_t id = 0);
 		PanelStack m_FilePanels;
+	public:
+		inline emu::EmulatorThread& GetEmulatorThread() { return m_EmulatorThread; }
 	private:
 		emu::EmulatorThread m_EmulatorThread;
 	};

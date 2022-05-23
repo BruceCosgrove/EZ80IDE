@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GBC/Core/Core.h"
 #include <cstdint>
 #include <filesystem>
 
@@ -45,7 +46,7 @@ namespace gbc
 		static Ref<LocalTexture2D> Create();
 		static Ref<LocalTexture2D> Create(const std::filesystem::path& filepath, int32_t requiredChannels = 0);
 		static Ref<LocalTexture2D> Create(const std::filesystem::path& filepath, bool flipVertically, int32_t requiredChannels = 0);
-		static Ref<LocalTexture2D> Create(int32_t width, int32_t height, int32_t channels);
+		static Ref<LocalTexture2D> Create(int32_t width, int32_t height, int32_t channels, bool clear = true);
 		static Ref<LocalTexture2D> Create(int32_t width, int32_t height, int32_t channels, uint8_t* data);
 	private:
 		std::filesystem::path filepath;

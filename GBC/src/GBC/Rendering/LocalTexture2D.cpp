@@ -196,8 +196,8 @@ namespace gbc
 	Ref<LocalTexture2D> LocalTexture2D::Create(const std::filesystem::path& filepath, bool flipVertically, int32_t requiredChannels)
 	{ return CreateRef<LocalTexture2D>(filepath, flipVertically, requiredChannels); }
 
-	Ref<LocalTexture2D> LocalTexture2D::Create(int32_t width, int32_t height, int32_t channels)
-	{ return CreateRef<LocalTexture2D>(width, height, channels); }
+	Ref<LocalTexture2D> LocalTexture2D::Create(int32_t width, int32_t height, int32_t channels, bool clear)
+	{ return CreateRef<LocalTexture2D>(width, height, channels, clear); }
 
 	Ref<LocalTexture2D> LocalTexture2D::Create(int32_t width, int32_t height, int32_t channels, uint8_t* data)
 	{ return CreateRef<LocalTexture2D>(width, height, channels, data); }
