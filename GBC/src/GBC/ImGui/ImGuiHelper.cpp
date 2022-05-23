@@ -1,23 +1,15 @@
 #include "gbcpch.h"
-#if GBC_ENABLE_IMGUI
 #include "ImGuiHelper.h"
 #include <imgui/imgui_internal.h>
 
 namespace gbc
 {
-	struct ImGuiHelperData
-	{
-		ImFont* boldFont = nullptr;
-	};
-	static ImGuiHelperData data;
-
 	void ImGuiHelper::Init()
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		ImGuiStyle& style = ImGui::GetStyle();
 
-		io.FontDefault = io.Fonts->AddFontFromFileTTF("Resources/Fonts/OpenSans/OpenSans-Regular.ttf", 18.0f);
-		data.boldFont = io.Fonts->AddFontFromFileTTF("Resources/Fonts/OpenSans/OpenSans-Bold.ttf", 18.0f);
+		io.FontDefault = io.Fonts->AddFontFromFileTTF("vendor/CEmu/CEmu/gui/qt/resources/custom_fonts/TICELarge.ttf", 16.0f);
 
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
 		io.ConfigWindowsMoveFromTitleBarOnly = true;
@@ -27,25 +19,14 @@ namespace gbc
 		style.WindowPadding = { 4.0f, 4.0f };
 		style.WindowMenuButtonPosition = ImGuiDir_None;
 
-		SetSceneEditColors();
+		SetDarkThemeColors();
 	}
 
-	void ImGuiHelper::SetScenePlayColors()
+	void ImGuiHelper::SetDarkThemeColors()
 	{
 		auto& colors = ImGui::GetStyle().Colors;
 
-		SetSceneEditColors();
-
-		// TODO: this could most definitely use some actual hardcoded colors and not just a tint
-		for (int32_t i = 0; i < ImGuiCol_COUNT; i++)
-			colors[i] = { colors[i].x * 0.69f, colors[i].y * 0.69f, colors[i].z * 1.0f, colors[i].w };
-	}
-
-	void ImGuiHelper::SetSceneEditColors()
-	{
-		auto& colors = ImGui::GetStyle().Colors;
-
-		// Start with dark theme
+		// Start with default dark theme.
 		ImGui::StyleColorsDark();
 
 		// Window
@@ -359,4 +340,3 @@ namespace gbc
 		return payload;
 	}
 }
-#endif

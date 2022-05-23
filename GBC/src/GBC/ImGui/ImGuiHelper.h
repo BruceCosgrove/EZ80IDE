@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
 #include <imgui/imgui.h>
 #include <functional>
 #include <string>
@@ -19,8 +18,7 @@ namespace gbc
 		static constexpr ImGuiInputTextFlags defaultTextFlags = ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_EnterReturnsTrue;
 		static constexpr ImGuiDragDropFlags defaultDragDropFlags = ImGuiDragDropFlags_None;
 	public:
-		static void SetScenePlayColors();
-		static void SetSceneEditColors();
+		static void SetDarkThemeColors();
 
 		static bool BeginTable(const char* id, int32_t columnCount = 2, ImGuiTableFlags flags = defaultTableFlags);
 		static void NextTableColumn();
@@ -60,4 +58,3 @@ namespace gbc
 }
 
 #include "ImGuiHelper.inl"
-#endif

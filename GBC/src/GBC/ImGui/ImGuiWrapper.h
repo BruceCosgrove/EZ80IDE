@@ -1,7 +1,6 @@
 #pragma once
 
 #include "GBC/Core/Core.h"
-#if GBC_ENABLE_IMGUI
 #include "GBC/Events/Event.h"
 
 namespace gbc
@@ -23,4 +22,3 @@ namespace gbc
 		bool blockEvents = false;
 	};
 }
-#endif

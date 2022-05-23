@@ -1,5 +1,4 @@
 #include "gbcpch.h"
-#if GBC_ENABLE_IMGUI
 #include "ImGuiWrapper.h"
 #include "GBC/Core/Application.h"
 #include "GBC/ImGui/ImGuiHelper.h"
@@ -74,4 +73,3 @@ namespace gbc
 		return ImGui::GetCurrentContext()->Viewports.size() > 1;
 	}
 }
-#endif

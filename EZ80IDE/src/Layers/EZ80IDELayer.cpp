@@ -1086,6 +1086,8 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			m_BinDirectory.clear();
 			m_CalcDirectory.clear();
 			m_ROMFilepath.clear();
+
+			m_EmulatorThread.Unload();
 		}
 		else
 		{
@@ -1162,8 +1164,9 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 			}
 			else
 			{
-				RemoveStates(IDEState_ROMLoaded);
 				m_ROMFilepath.clear();
+				m_EmulatorThread.Unload();
+				RemoveStates(IDEState_ROMLoaded);
 			}
 		}
 
@@ -1177,7 +1180,7 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 				if (!gbc::util::SToI(titleIDNode.second.as<std::string>(), titleID, 36))
 					titleID = 0;
 
-				FilePanel* filePanel = AddFilePanel(titleIDFilepath, titleID);
+				auto filePanel = AddFilePanel(titleIDFilepath, titleID);
 				m_TitleIDs[std::move(titleIDFilepath)] = filePanel->GetDefaultTitle();
 			}
 		}
@@ -1201,8 +1204,8 @@ DockSpace     ID=0x33675C32 Window=0x5B816B74 Pos=0,49 Size=1920,991 Split=X
 
 	void EZ80IDELayer::UnloadROM()
 	{
+		m_ROMFilepath.clear();
 		m_EmulatorThread.Unload();
 		RemoveStates(IDEState_ROMLoaded | IDEState_EmulatorRunning);
-		m_ROMFilepath.clear();
 	}
 }
