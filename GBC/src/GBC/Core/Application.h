@@ -1,26 +1,13 @@
 #pragma once
 
+#include "GBC/Core/CommandLineArgs.h"
 #include "GBC/Core/LayerStack.h"
 #include "GBC/Core/Window.h"
 #include "GBC/Events/WindowEvents.h"
 #include "GBC/ImGui/ImGuiWrapper.h"
 
-int main(int argc, char** argv);
-
 namespace gbc
 {
-	struct CommandLineArgs
-	{
-		int count = 0;
-		char** args = nullptr;
-
-		constexpr const char* operator[](int index) const
-		{
-			GBC_CORE_ASSERT(0 <= index && index < count, "Command Line Args index out of bounds!");
-			return args[index];
-		}
-	};
-
 	class Application
 	{
 	public:
@@ -59,7 +46,7 @@ namespace gbc
 		bool rendering = true;
 		bool windowZeroSize = false;
 	private:
-		friend int ::main(int argc, char** argv);
+		friend int Main(CommandLineArgs args);
 		void Run();
 	};
 

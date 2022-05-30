@@ -2,10 +2,10 @@ project "CEmu"
 	kind "StaticLib"
 	language "C"
 	cdialect "C17"
-	staticruntime "on"
+	staticruntime "On"
 
-	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+	targetdir ("%{wks.location}/bin/" .. OutputDir .. "/%{prj.name}")
+	objdir ("%{wks.location}/bin-int/" .. OutputDir .. "/%{prj.name}")
 
 	files {
 		"CEmu/core/*.h",
@@ -39,7 +39,8 @@ project "CEmu"
 
 	filter "configurations:Debug"
 		runtime "Debug"
-		symbols "on"
+		optimize "Off"
+		symbols "On"
 
 		files {
 			"CEmu/core/debug/**.h",
@@ -52,4 +53,10 @@ project "CEmu"
 
 	filter "configurations:Release"
 		runtime "Release"
-		optimize "on"
+		optimize "On"
+		symbols "On"
+
+	filter "configurations:Dist"
+		runtime "Release"
+		optimize "On"
+		symbols "Off"

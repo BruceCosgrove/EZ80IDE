@@ -9,7 +9,7 @@ namespace gbc
 		ImGuiIO& io = ImGui::GetIO();
 		ImGuiStyle& style = ImGui::GetStyle();
 
-		io.FontDefault = io.Fonts->AddFontFromFileTTF("vendor/CEmu/CEmu/gui/qt/resources/custom_fonts/TICELarge.ttf", 16.0f);
+		io.FontDefault = io.Fonts->AddFontFromFileTTF("Dependencies/CEmu/CEmu/gui/qt/resources/custom_fonts/TICELarge.ttf", 16.0f);
 
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable;
 		io.ConfigWindowsMoveFromTitleBarOnly = true;

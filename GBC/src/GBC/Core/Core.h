@@ -31,6 +31,8 @@
 
 #define GBC_BIND_FUNC(func) [this](auto&&... args) -> decltype(auto) { return this->func(std::forward<decltype(args)>(args)...); }
 
+#define UNUSED_PARAMS(...) static_cast<void>(__VA_ARGS__)
+
 #include <memory>
 #include <cstdint>
 

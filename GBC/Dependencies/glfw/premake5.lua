@@ -1,10 +1,11 @@
 project "glfw"
 	kind "StaticLib"
 	language "C"
-	staticruntime "on"
+	cdialect "C17"
+	staticruntime "On"
 
-	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+	targetdir ("%{wks.location}/bin/" .. OutputDir .. "/%{prj.name}")
+	objdir ("%{wks.location}/bin-int/" .. OutputDir .. "/%{prj.name}")
 
 	files {
 		"include/glfw/glfw3.h",
@@ -40,8 +41,15 @@ project "glfw"
 
 	filter "configurations:Debug"
 		runtime "Debug"
-		symbols "on"
+		optimize "Off"
+		symbols "On"
 
 	filter "configurations:Release"
 		runtime "Release"
-		optimize "on"
+		optimize "On"
+		symbols "On"
+
+	filter "configurations:Dist"
+		runtime "Release"
+		optimize "On"
+		symbols "Off"

@@ -1,38 +1,49 @@
-include "vendor/premake/solution_items.lua"
-include "Dependencies.lua"
+include "Dependencies/premake/Custom/solutionitems.lua"
 
 workspace "EZ80IDE"
 	architecture "x86_64"
 	startproject "EZ80IDE"
 
-	configurations {
-		"Debug",
-		"Release",
-		"Dist"
-	}
+	configurations { "Debug", "Release", "Dist" }
 
-	solution_items {
-		"premake5.lua",
-		"Dependencies.lua",
+	solutionitems {
+		-- Visual Studio
 		".editorconfig",
+
+		-- Git
 		".gitignore",
-		".gitattributes"
+		".gitattributes",
+
+		-- Scripts
+		"Scripts/GenerateProjects.bat",
+
+		-- Lua Scripts
+		"premake5.lua",
+		"Dependencies/Dependencies.lua",
+		"Dependencies/premake/Custom/solutionitems.lua",
+		"Dependencies/premake/Custom/usestdpreproc.lua",
+		
+		-- Misc
+		"README.md"
 	}
 
 	flags {
 		"MultiProcessorCompile"
 	}
 
-outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+OutputDir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+
+include "Dependencies/premake/Custom/usestdpreproc.lua"
+include "Dependencies/Dependencies.lua"
 
 group "Dependencies/GBC"
-	include "GBC/vendor/glad"
-	include "GBC/vendor/glfw"
-	include "GBC/vendor/imgui"
-	include "GBC/vendor/stb"
-	include "GBC/vendor/yaml"
+	include "GBC/Dependencies/glad"
+	include "GBC/Dependencies/glfw"
+	include "GBC/Dependencies/imgui"
+	include "GBC/Dependencies/stb"
+	include "GBC/Dependencies/yaml"
 group "Dependencies/EZ80IDE"
-	include "EZ80IDE/vendor/CEmu"
+	include "EZ80IDE/Dependencies/CEmu"
 group ""
 
 include "GBC"

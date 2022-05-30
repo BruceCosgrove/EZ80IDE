@@ -2,10 +2,10 @@ project "imgui"
 	kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
-	staticruntime "off"
+	staticruntime "Off"
 
-	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+	targetdir ("%{wks.location}/bin/" .. OutputDir .. "/%{prj.name}")
+	objdir ("%{wks.location}/bin-int/" .. OutputDir .. "/%{prj.name}")
 
 	files {
 		"include/imgui/**.h",
@@ -16,11 +16,11 @@ project "imgui"
 		"include/imgui",
 		"%{wks.location}/GBC/src",
 
-		"%{includedir.glad}",
-		"%{includedir.glfw}",
-		"%{includedir.spdlog}",
+		"%{IncludeDir.glad}",
+		"%{IncludeDir.glfw}",
+		"%{IncludeDir.spdlog}",
 
-		"%{includedir.glm}"
+		"%{IncludeDir.glm}"
 	}
 
 	filter "system:windows"
@@ -30,14 +30,17 @@ project "imgui"
 	filter "configurations:Debug"
 		defines "GBC_CONFIG_DEBUG"
 		runtime "Debug"
-		symbols "on"
+		optimize "Off"
+		symbols "On"
 
 	filter "configurations:Release"
 		defines "GBC_CONFIG_RELEASE"
 		runtime "Release"
-		optimize "on"
+		optimize "On"
+		symbols "On"
 
 	filter "configurations:Dist"
 		defines "GBC_CONFIG_DIST"
 		runtime "Release"
-		optimize "on"
+		optimize "On"
+		symbols "Off"

@@ -1,11 +1,12 @@
 project "GBC"
 	kind "StaticLib"
 	language "C++"
-	cppdialect "C++latest"
-	staticruntime "off"
+	cppdialect "C++20"
+	cdialect "C17"
+	staticruntime "Off"
 
-	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")
-	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")
+	targetdir ("%{wks.location}/bin/" .. OutputDir .. "/%{prj.name}")
+	objdir ("%{wks.location}/bin-int/" .. OutputDir .. "/%{prj.name}")
 
 	pchheader "gbcpch.h"
 	pchsource "src/gbcpch.cpp"
@@ -18,23 +19,25 @@ project "GBC"
 
 	files {
 		"src/**.h",
-		"src/**.inl",
-		"src/**.cpp"
+		"src/**.c",
+		"src/**.hpp",
+		"src/**.cpp",
+		"src/**.inl"
 	}
 
 	includedirs {
 		"src",
 
-		"%{includedir.glad}",
-		"%{includedir.glfw}",
-		"%{includedir.imgui}",
-		"%{includedir.spdlog}",
+		"%{IncludeDir.glad}",
+		"%{IncludeDir.glfw}",
+		"%{IncludeDir.imgui}",
+		"%{IncludeDir.spdlog}",
 
-		"%{includedir.glm}",
-		"%{includedir.stb}",
-		"%{includedir.yaml}",
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.stb}",
+		"%{IncludeDir.yaml}",
 
-		"%{includedir.VulkanSDK}"
+		"%{IncludeDir.VulkanSDK}"
 	}
 
 	links {
@@ -54,34 +57,37 @@ project "GBC"
 	filter "configurations:Debug"
 		defines "GBC_CONFIG_DEBUG"
 		runtime "Debug"
-		symbols "on"
+		optimize "Off"
+		symbols "On"
 
 		links {
-			"%{library.ShaderC_Debug}",
-			"%{library.SPIRV_Cross_Debug}",
-			"%{library.SPIRV_Cross_GLSL_Debug}"
+			"%{Library.ShaderC_Debug}",
+			"%{Library.SPIRV_Cross_Debug}",
+			"%{Library.SPIRV_Cross_GLSL_Debug}"
 		}
 
 	filter "configurations:Release"
 		defines "GBC_CONFIG_RELEASE"
 		runtime "Release"
-		optimize "on"
+		optimize "On"
+		symbols "On"
 
 		links {
-			"%{library.ShaderC_Release}",
-			"%{library.SPIRV_Cross_Release}",
-			"%{library.SPIRV_Cross_GLSL_Release}"
+			"%{Library.ShaderC_Release}",
+			"%{Library.SPIRV_Cross_Release}",
+			"%{Library.SPIRV_Cross_GLSL_Release}"
 		}
 
 	filter "configurations:Dist"
 		defines "GBC_CONFIG_DIST"
 		runtime "Release"
-		optimize "on"
+		optimize "On"
+		symbols "Off"
 
 		links {
-			"%{library.ShaderC_Release}",
-			"%{library.SPIRV_Cross_Release}",
-			"%{library.SPIRV_Cross_GLSL_Release}"
+			"%{Library.ShaderC_Release}",
+			"%{Library.SPIRV_Cross_Release}",
+			"%{Library.SPIRV_Cross_GLSL_Release}"
 		}
 
 		-- These only have debug logging

@@ -3,8 +3,6 @@
 #include "GBC/Core/Core.h"
 #include <spdlog/spdlog.h>
 
-int main(int argc, char** argv);
-
 namespace gbc
 {
 	class Logger
@@ -15,8 +13,7 @@ namespace gbc
 	private:
 		static Ref<spdlog::logger> coreLogger;
 		static Ref<spdlog::logger> clientLogger;
-	private:
-		friend int ::main(int argc, char** argv);
+	public:
 		static void Init();
 	};
 }
